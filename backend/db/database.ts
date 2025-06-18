@@ -10,16 +10,17 @@ const db = new sqlite3.Database(dbPath, (err) => {
         console.log('Connected to the SQLite database.');
         db.run(`CREATE TABLE IF NOT EXISTS trades (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            position_id INTEGER,
             ticker TEXT NOT NULL,
-            tipo TEXT NOT NULL,
-            data_entrada TEXT NOT NULL,
-            preco_entrada REAL NOT NULL,
-            data_saida TEXT,
-            preco_saida REAL,
-            quantidade INTEGER NOT NULL,
+            type TEXT NOT NULL,
+            entry_date TEXT NOT NULL,
+            entry_price REAL NOT NULL,
+            exit_date TEXT,
+            exit_price REAL,
+            quantity INTEGER NOT NULL,
             setup TEXT,
-            observacoes TEXT,
-            resultado REAL
+            observations TEXT,
+            result REAL
         )`);
     }
 });

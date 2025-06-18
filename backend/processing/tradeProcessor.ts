@@ -2,23 +2,23 @@ import { Trade } from '../types/trade';
 
 const TradeProcessor = {
     calculateResult: (trade: Trade): Trade => {
-        let resultado = trade.resultado || 0;
+        let result = trade.result || 0;
 
-        if (trade.preco_entrada && trade.preco_saida && trade.quantidade) {
-            const entrada = Number(trade.preco_entrada);
-            const saida = Number(trade.preco_saida);
-            const quantidade = Number(trade.quantidade);
+        if (trade.entry_price && trade.exit_price && trade.quantity) {
+            const entry = Number(trade.entry_price);
+            const exit = Number(trade.exit_price);
+            const quantity = Number(trade.quantity);
 
-            if (trade.tipo === 'Compra') {
-                resultado = (saida - entrada) * quantidade;
-            } else { // Venda
-                resultado = (entrada - saida) * quantidade;
+            if (trade.type === 'Buy') {
+                result = (exit - entry) * quantity;
+            } else { // Sell
+                result = (entry - exit) * quantity;
             }
         }
 
         return {
             ...trade,
-            resultado
+            result
         };
     }
 };

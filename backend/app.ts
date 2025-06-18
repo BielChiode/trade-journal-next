@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import tradeController from './controllers/tradeController';
-import './db/database'; // Garante que a conexão com o BD seja iniciada
+import './db/database'; // Ensures the DB connection is initiated
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -9,11 +9,17 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 
-// Rotas da API
-app.get('/api/trades', tradeController.getAllTrades);
-app.post('/api/trades', tradeController.addTrade);
-app.put('/api/trades/:id', tradeController.updateTrade);
-app.delete('/api/trades/:id', tradeController.deleteTrade);
+const router = express.Router();
+
+// API Routes
+router.get('/trades', tradeController.getAllTrades);
+router.get('/trades/position/:positionId', tradeController.getTradesByPositionId);
+router.post('/trades', tradeController.addTrade);
+router.put('/trades/:id', tradeController.updateTrade);
+router.post('/trades/:id/partial-exit', tradeController.createPartialExit);
+router.delete('/trades/:id', tradeController.deleteTrade);
+
+app.use('/api', router);
 
 app.listen(PORT, () => {
     console.log(`Backend server is running on http://localhost:${PORT}`);
