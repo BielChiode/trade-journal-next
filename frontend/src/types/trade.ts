@@ -1,14 +1,15 @@
 // A mesma interface do backend, para garantir consistência
 export interface Trade {
     id?: number;
+    position_id?: number;
     ticker: string;
-    tipo: 'Compra' | 'Venda';
-    data_entrada: string;
-    preco_entrada: number;
-    data_saida?: string | null;
-    preco_saida?: number | null;
-    quantidade: number;
+    type: 'Buy' | 'Sell';
+    entry_date: string;
+    entry_price: number;
+    exit_date?: string | null;
+    exit_price?: number | null;
+    quantity: number;
     setup?: string | null;
-    observacoes?: string | null;
-    resultado?: number | null;
+    observations?: string | null;
+    result?: number | null;
 } 

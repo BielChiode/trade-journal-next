@@ -30,8 +30,8 @@ interface CumulativeProfitChartProps {
 
 const CumulativeProfitChart: React.FC<CumulativeProfitChartProps> = ({ trades }) => {
     const sortedTrades = [...trades]
-        .filter(t => t.data_saida && t.resultado != null)
-        .sort((a, b) => new Date(a.data_saida!).getTime() - new Date(b.data_saida!).getTime());
+        .filter(t => t.exit_date && t.result != null)
+        .sort((a, b) => new Date(a.exit_date!).getTime() - new Date(b.exit_date!).getTime());
     
     let cumulativeProfit = 0;
     const chartData: ChartData<'line'> = {
@@ -51,8 +51,8 @@ const CumulativeProfitChart: React.FC<CumulativeProfitChartProps> = ({ trades })
     };
 
     sortedTrades.forEach((trade, index) => {
-        if (trade.resultado != null) {
-            cumulativeProfit += Number(trade.resultado);
+        if (trade.result != null) {
+            cumulativeProfit += Number(trade.result);
             chartData.labels!.push(`Trade ${index + 1}`);
             (chartData.datasets[0].data as number[]).push(cumulativeProfit);
         }

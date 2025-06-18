@@ -2177,7 +2177,7 @@
   dependencies:
     "@types/istanbul-lib-report" "*"
 
-"@types/jest@*", "@types/jest@^30.0.0":
+"@types/jest@*":
   version "30.0.0"
   resolved "https://registry.npmjs.org/@types/jest/-/jest-30.0.0.tgz"
   integrity sha512-XTYugzhuwqWjws0CVz8QpM36+T+Dz5mTEBKhNs/esGLnCIlGdRy+Dq78NRjd7ls7r8BC8ZRMOrKlkO1hU0JOwA==
@@ -2207,7 +2207,7 @@
   dependencies:
     "@types/node" "*"
 
-"@types/node@*", "@types/node@^24.0.3":
+"@types/node@*":
   version "24.0.3"
   resolved "https://registry.npmjs.org/@types/node/-/node-24.0.3.tgz"
   integrity sha512-R4I/kzCYAdRLzfiCabn9hxWfbuHS573x+r0dJMkkzThEa7pbrcDWK+9zu3e7aBOouf+rQAciqPFMnxwr0aWgKg==
@@ -2244,7 +2244,7 @@
   resolved "https://registry.npmjs.org/@types/range-parser/-/range-parser-1.2.7.tgz"
   integrity sha512-hKormJbkJqzQGhziax5PItDUTMAM9uE2XXQmM37dyd4hVM+5aVl7oVxMVUiVQn2oCQFN/LKCZdvSM0pFRqbSmQ==
 
-"@types/react-dom@*", "@types/react-dom@^19.1.6":
+"@types/react-dom@*":
   version "19.1.6"
   resolved "https://registry.npmjs.org/@types/react-dom/-/react-dom-19.1.6.tgz"
   integrity sha512-4hOiT/dwO8Ko0gV1m/TJZYk3y0KBnY9vzDh7W+DH17b2HFSOGgdj33dhihPeuy3l0q23+4e+hoXHV6hCC4dCXw==
@@ -2254,7 +2254,7 @@
   resolved "https://registry.npmjs.org/@types/react-dom/-/react-dom-18.3.7.tgz"
   integrity sha512-MEe3UeoENYVFXzoXEWsvcpg6ZvlrFNlOQ7EOsvhI3CfAXwzPfO8Qwuxd40nepsYKqyyVQnTdEfv68q91yLcKrQ==
 
-"@types/react@*", "@types/react@^19.0.0", "@types/react@^19.1.8":
+"@types/react@*", "@types/react@^19.0.0":
   version "19.1.8"
   resolved "https://registry.npmjs.org/@types/react/-/react-19.1.8.tgz"
   integrity sha512-AwAfQ2Wa5bCx9WP8nZL2uMZWod7J7/JSplxbTmBQ5ms6QpqNYm672H0Vu9ZVKVngQ+ii4R/byguVEUZQyeg44g==
@@ -9658,10 +9658,10 @@ typedarray-to-buffer@^3.1.5:
   dependencies:
     is-typedarray "^1.0.0"
 
-"typescript@^3.2.1 || ^4", typescript@^5.8.3, "typescript@>= 2.7", "typescript@>=2.8.0 || >= 3.2.0-dev || >= 3.3.0-dev || >= 3.4.0-dev || >= 3.5.0-dev || >= 3.6.0-dev || >= 3.6.0-beta || >= 3.7.0-dev || >= 3.7.0-beta":
-  version "5.8.3"
-  resolved "https://registry.npmjs.org/typescript/-/typescript-5.8.3.tgz"
-  integrity sha512-p1diW6TqL9L07nNxvRMM7hMMw4c5XOo/1ibL4aAIGmSAt9slTE1Xgw5KWuof2uTOvCg9BY7ZRi+GaF+7sfgPeQ==
+"typescript@^3.2.1 || ^4", typescript@^4.9.5, "typescript@>= 2.7", "typescript@>=2.8.0 || >= 3.2.0-dev || >= 3.3.0-dev || >= 3.4.0-dev || >= 3.5.0-dev || >= 3.6.0-dev || >= 3.6.0-beta || >= 3.7.0-dev || >= 3.7.0-beta":
+  version "4.9.5"
+  resolved "https://registry.npmjs.org/typescript/-/typescript-4.9.5.tgz"
+  integrity sha512-1FXk9E2Hm+QzZQ7z+McJiHL4NW1F2EzMu9Nq9i3zAaGqibafqYwCVU6WyWAuyQRRzOlxou8xZSyXLEN8oKj24g==
 
 unbox-primitive@^1.1.0:
   version "1.1.0"
