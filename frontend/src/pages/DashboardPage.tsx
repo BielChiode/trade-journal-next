@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { PlusCircle, Plus, Edit } from "lucide-react";
+import { PlusCircle, Plus, Edit, LogOut } from "lucide-react";
 import {
   getTrades,
   addTrade,
   updateTrade,
   deleteTrade,
   executePartialExit,
-} from "../services/api";
+} from "../services/tradeService";
 import { Button } from "../components/ui/Button";
 import {
   Card,
@@ -23,6 +23,7 @@ import { Trade } from "../types/trade";
 import PartialExitForm from "../components/PartialExitForm";
 import ConfirmationModal from "../components/ui/ConfirmationModal";
 import { formatCurrency } from "../lib/utils";
+import { useAuth } from "../contexts/AuthContext";
 
 // Adicionar uma nova interface para o resumo da posição
 export interface PositionSummary extends Trade {
@@ -84,6 +85,7 @@ const summarizePositions = (trades: Trade[]): PositionSummary[] => {
 };
 
 const DashboardPage: React.FC = () => {
+  const { logout } = useAuth();
   const [positions, setPositions] = useState<PositionSummary[]>([]);
   const [isTradeModalOpen, setIsTradeModalOpen] = useState(false);
   const [currentTrade, setCurrentTrade] = useState<Trade | null>(null);
@@ -143,6 +145,7 @@ const DashboardPage: React.FC = () => {
         result,
       };
 
+      await new Promise((resolve) => setTimeout(resolve, 1500));
       await addTrade(tradeWithResult);
       setIsTradeModalOpen(false);
       loadTrades();
@@ -172,8 +175,20 @@ const DashboardPage: React.FC = () => {
         result,
       };
 
+      await new Promise((resolve) => setTimeout(resolve, 1500));
       await updateTrade(tradeId, tradeWithResult);
-      loadTrades();
+
+      // Recarrega os trades e atualiza a posição selecionada
+      const response = await getTrades();
+      const newPositions = summarizePositions(response.data);
+      setPositions(newPositions);
+
+      if (selectedPosition) {
+        const updatedSelectedPosition = newPositions.find(
+          (p) => p.id === selectedPosition.id
+        );
+        setSelectedPosition(updatedSelectedPosition || null);
+      }
     } catch (error) {
       console.error("Erro ao atualizar trade:", error);
       throw error;
@@ -182,6 +197,7 @@ const DashboardPage: React.FC = () => {
 
   const handleDeleteTrade = async (tradeId: number) => {
     try {
+      await new Promise((resolve) => setTimeout(resolve, 1500));
       await deleteTrade(tradeId);
       setIsDetailsModalOpen(false);
       loadTrades(); // Recarregar a lista de trades
@@ -211,7 +227,6 @@ const DashboardPage: React.FC = () => {
 
   const handleOpenPartialExitModal = (trade: Trade) => {
     setTradeForPartialExit(trade);
-    setIsDetailsModalOpen(false); // Fecha o modal de detalhes
     setIsPartialExitModalOpen(true);
   };
 
@@ -222,10 +237,22 @@ const DashboardPage: React.FC = () => {
   }) => {
     if (!tradeForPartialExit) return;
     try {
+      await new Promise((resolve) => setTimeout(resolve, 1500));
       await executePartialExit(tradeForPartialExit.id!, exitData);
       setIsPartialExitModalOpen(false);
       setTradeForPartialExit(null);
-      loadTrades(); // Recarrega todos os trades
+
+      // Recarrega os trades e atualiza a posição selecionada
+      const response = await getTrades();
+      const newPositions = summarizePositions(response.data);
+      setPositions(newPositions);
+
+      if (selectedPosition) {
+        const updatedSelectedPosition = newPositions.find(
+          (p) => p.id === selectedPosition.id
+        );
+        setSelectedPosition(updatedSelectedPosition || null);
+      }
     } catch (error) {
       console.error("Erro ao executar saída parcial:", error);
       // Adicionar feedback para o usuário aqui, se desejar
@@ -266,19 +293,24 @@ const DashboardPage: React.FC = () => {
           Trade Journal
         </h1>
 
-        <div className="hidden md:flex items-center gap-6">
-          <div className="text-sm text-right">
-            <span className="text-muted-foreground">Capital Inicial: </span>
-            <span className="font-semibold">
-              {formatCurrency(initialCapital)}
-            </span>
+        <div className="flex items-center gap-6">
+          <div className="hidden md:flex items-center gap-6">
+            <div className="text-sm text-right">
+              <span className="text-muted-foreground">Capital Inicial: </span>
+              <span className="font-semibold">
+                {formatCurrency(initialCapital)}
+              </span>
+            </div>
+            <div className="text-sm text-right">
+              <span className="text-muted-foreground">Capital Atual: </span>
+              <span className="font-semibold">
+                {formatCurrency(currentCapital)}
+              </span>
+            </div>
           </div>
-          <div className="text-sm text-right">
-            <span className="text-muted-foreground">Capital Atual: </span>
-            <span className="font-semibold">
-              {formatCurrency(currentCapital)}
-            </span>
-          </div>
+          <Button variant="ghost" size="icon" onClick={logout} title="Sair">
+            <LogOut size={16} />
+          </Button>
         </div>
       </header>
 
@@ -454,11 +486,7 @@ const DashboardPage: React.FC = () => {
           isOpen={isDetailsModalOpen}
           onClose={() => setIsDetailsModalOpen(false)}
           position={selectedPosition}
-          onUpdateTrade={async (id, data) => {
-            await handleUpdateTrade(id, data);
-            // Recarrega a posição para refletir as mudanças
-            loadTrades();
-          }}
+          onUpdateTrade={handleUpdateTrade}
           onDeleteTrade={handleDeleteTrade}
           onOpenPartialExit={handleOpenPartialExitModal}
           startInEditMode={startInEditMode}

@@ -15,6 +15,7 @@ import ConfirmationModal from "./ui/ConfirmationModal";
 import { Trade } from "../types/trade";
 import { cn } from "../lib/utils";
 import { PositionSummary } from "../pages/DashboardPage";
+import ButtonLoader from "./ui/ButtonLoader";
 
 interface TradeDetailsModalProps {
   isOpen: boolean;
@@ -359,13 +360,14 @@ const TradeDetailsModal: React.FC<TradeDetailsModalProps> = ({
             <Button
               variant="outline"
               onClick={() => onOpenPartialExit(openTrade)}
+              disabled={isDeleting}
             >
               <GitCommitHorizontal size={16} className="mr-2" />
               Registrar Saída Parcial
             </Button>
           )}
 
-          <Button variant="outline" onClick={handleEdit}>
+          <Button variant="outline" onClick={handleEdit} disabled={isDeleting}>
             <Edit size={16} className="mr-2" />
             Editar
           </Button>
@@ -374,8 +376,14 @@ const TradeDetailsModal: React.FC<TradeDetailsModalProps> = ({
             onClick={handleDeleteClick}
             disabled={isDeleting}
           >
-            <Trash2 size={16} className="mr-2" />
-            {isDeleting ? "Excluindo..." : "Excluir"}
+            {isDeleting ? (
+              <ButtonLoader text="Excluindo..." />
+            ) : (
+              <>
+                <Trash2 size={16} className="mr-2" />
+                Excluir
+              </>
+            )}
           </Button>
         </div>
       </Modal>

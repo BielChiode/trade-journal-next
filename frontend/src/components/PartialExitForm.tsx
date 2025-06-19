@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Button } from './ui/Button';
+import ButtonLoader from './ui/ButtonLoader';
 
 interface PartialExitFormProps {
-  onSubmit: (data: { exit_quantity: number; exit_price: number; exit_date: string }) => void;
+  onSubmit: (data: { exit_quantity: number; exit_price: number; exit_date: string }) => Promise<void>;
   onCancel: () => void;
   remainingQuantity: number;
 }
@@ -13,7 +14,7 @@ const PartialExitForm: React.FC<PartialExitFormProps> = ({ onSubmit, onCancel, r
   const [exit_date, setExitDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!exit_quantity || !exit_price || !exit_date) {
       alert('Por favor, preencha todos os campos.');
@@ -29,12 +30,18 @@ const PartialExitForm: React.FC<PartialExitFormProps> = ({ onSubmit, onCancel, r
     }
 
     setLoading(true);
-    onSubmit({
-      exit_quantity: Number(exit_quantity),
-      exit_price: Number(exit_price),
-      exit_date,
-    });
-    setLoading(false);
+    try {
+      await onSubmit({
+        exit_quantity: Number(exit_quantity),
+        exit_price: Number(exit_price),
+        exit_date,
+      });
+    } catch (error) {
+        console.error("Error on partial exit submission", error);
+        // Opcional: mostrar um erro para o usuário
+    } finally {
+        setLoading(false);
+    }
   };
 
   return (
@@ -50,6 +57,7 @@ const PartialExitForm: React.FC<PartialExitFormProps> = ({ onSubmit, onCancel, r
           placeholder="Ex: 50"
           className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           required
+          disabled={loading}
         />
       </div>
       <div className="grid grid-cols-2 gap-4">
@@ -63,6 +71,7 @@ const PartialExitForm: React.FC<PartialExitFormProps> = ({ onSubmit, onCancel, r
             placeholder="0.00"
             className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             required
+            disabled={loading}
           />
         </div>
         <div>
@@ -73,15 +82,16 @@ const PartialExitForm: React.FC<PartialExitFormProps> = ({ onSubmit, onCancel, r
             onChange={(e) => setExitDate(e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             required
+            disabled={loading}
           />
         </div>
       </div>
       <div className="flex justify-end gap-3 pt-4">
-        <Button type="button" variant="outline" onClick={onCancel}>
+        <Button type="button" variant="outline" onClick={onCancel} disabled={loading}>
           Cancelar
         </Button>
         <Button type="submit" disabled={loading}>
-          {loading ? 'Salvando...' : 'Confirmar Saída'}
+          {loading ? <ButtonLoader text="Salvando..." /> : 'Confirmar Saída'}
         </Button>
       </div>
     </form>

@@ -1,6 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import tradeController from './controllers/tradeController';
+import * as authController from './controllers/authController';
+import { protect } from './middleware/authMiddleware';
 import './db/database'; // Ensures the DB connection is initiated
 
 const app = express();
@@ -11,13 +13,17 @@ app.use(express.json());
 
 const router = express.Router();
 
-// API Routes
-router.get('/trades', tradeController.getAllTrades);
-router.get('/trades/position/:positionId', tradeController.getTradesByPositionId);
-router.post('/trades', tradeController.addTrade);
-router.put('/trades/:id', tradeController.updateTrade);
-router.post('/trades/:id/partial-exit', tradeController.createPartialExit);
-router.delete('/trades/:id', tradeController.deleteTrade);
+// Auth Routes
+router.post('/auth/register', authController.register);
+router.post('/auth/login', authController.login);
+
+// API Routes (Protegidas)
+router.get('/trades', protect, tradeController.getAllTrades);
+router.get('/trades/position/:positionId', protect, tradeController.getTradesByPositionId);
+router.post('/trades', protect, tradeController.addTrade);
+router.put('/trades/:id', protect, tradeController.updateTrade);
+router.post('/trades/:id/partial-exit', protect, tradeController.createPartialExit);
+router.delete('/trades/:id', protect, tradeController.deleteTrade);
 
 app.use('/api', router);
 

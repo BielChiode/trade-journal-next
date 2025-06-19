@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { Button } from "./ui/Button";
 import { Trade } from "../types/trade";
 import Calendar from "react-calendar";
+import ButtonLoader from "./ui/ButtonLoader";
 
 type ValuePiece = Date | null;
 type Value = ValuePiece | [ValuePiece, ValuePiece];
@@ -158,6 +159,7 @@ const TradeForm: React.FC<TradeFormProps> = ({
             placeholder="Ex: PETR4"
             className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             required
+            disabled={loading}
           />
         </div>
         <div>
@@ -169,6 +171,7 @@ const TradeForm: React.FC<TradeFormProps> = ({
             value={trade.type}
             onChange={handleChange}
             className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            disabled={loading}
           >
             <option value="Buy">Compra</option>
             <option value="Sell">Venda</option>
@@ -191,6 +194,7 @@ const TradeForm: React.FC<TradeFormProps> = ({
               readOnly
               className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer"
               required
+              disabled={loading}
             />
             {showEntryCalendar && (
               <div ref={entryCalendarRef} className="absolute z-10 mt-1">
@@ -216,6 +220,7 @@ const TradeForm: React.FC<TradeFormProps> = ({
             placeholder="0.00"
             className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             required
+            disabled={loading}
           />
         </div>
       </div>
@@ -234,6 +239,8 @@ const TradeForm: React.FC<TradeFormProps> = ({
               onFocus={() => setShowExitCalendar(true)}
               readOnly
               className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer"
+              required
+              disabled={loading}
             />
             {showExitCalendar && (
               <div ref={exitCalendarRef} className="absolute z-10 mt-1">
@@ -258,6 +265,7 @@ const TradeForm: React.FC<TradeFormProps> = ({
             onChange={handleChange}
             placeholder="0.00"
             className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            disabled={loading}
           />
         </div>
       </div>
@@ -275,6 +283,7 @@ const TradeForm: React.FC<TradeFormProps> = ({
           placeholder="100"
           className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           required
+          disabled={loading}
         />
       </div>
 
@@ -289,6 +298,7 @@ const TradeForm: React.FC<TradeFormProps> = ({
           onChange={handleChange}
           placeholder="Ex: Rompimento de resistência"
           className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          disabled={loading}
         />
       </div>
 
@@ -304,6 +314,7 @@ const TradeForm: React.FC<TradeFormProps> = ({
           placeholder="Adicione suas observações sobre o trade..."
           rows={3}
           className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+          disabled={loading}
         />
       </div>
 
@@ -314,17 +325,20 @@ const TradeForm: React.FC<TradeFormProps> = ({
           className="w-full sm:flex-1 order-2 sm:order-1"
           disabled={loading}
         >
-          {loading
-            ? "Salvando..."
-            : isEditing
-            ? "Atualizar Trade"
-            : "Salvar Trade"}
+          {loading ? (
+            <ButtonLoader text={isEditing ? "Atualizando..." : "Salvando..."} />
+          ) : isEditing ? (
+            "Atualizar Trade"
+          ) : (
+            "Salvar Trade"
+          )}
         </Button>
         <Button
           type="button"
           variant="outline"
           onClick={onCancel}
           className="w-full sm:flex-1 order-1 sm:order-2"
+          disabled={loading}
         >
           Cancelar
         </Button>

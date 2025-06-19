@@ -5,7 +5,8 @@ import { Trade } from '../types/trade';
 
 const tradeController = {
     getAllTrades: (req: Request, res: Response) => {
-        TradeModel.findAll((err, trades) => {
+        const userId = req.user.id;
+        TradeModel.findAllByUser(userId, (err, trades) => {
             if (err) {
                 return res.status(500).send(err.message);
             }
@@ -14,8 +15,9 @@ const tradeController = {
     },
 
     addTrade: (req: Request, res: Response) => {
+        const userId = req.user.id;
         const newTrade: Trade = req.body;
-        TradeModel.create(newTrade, (err, result) => {
+        TradeModel.create(newTrade, userId, (err, result) => {
             if (err) {
                 return res.status(500).send(err.message);
             }
@@ -24,22 +26,24 @@ const tradeController = {
     },
 
     updateTrade: (req: Request, res: Response) => {
+        const userId = req.user.id;
         const tradeId = parseInt(req.params.id, 10);
         const updatedTrade: Trade = req.body;
-        TradeModel.update(tradeId, updatedTrade, (err, result) => {
+        TradeModel.update(tradeId, userId, updatedTrade, (err, result) => {
             if (err) {
                 return res.status(500).send(err.message);
             }
             if (result.changes === 0) {
-                return res.status(404).send('Trade not found');
+                return res.status(404).send('Trade not found or user not authorized');
             }
             res.status(200).json({ message: 'Trade updated successfully' });
         });
     },
 
     getTradesByPositionId: (req: Request, res: Response) => {
+        const userId = req.user.id;
         const positionId = parseInt(req.params.positionId, 10);
-        TradeModel.findByPositionId(positionId, (err, trades) => {
+        TradeModel.findByPositionId(positionId, userId, (err, trades) => {
             if (err) {
                 return res.status(500).send(err.message);
             }
@@ -48,19 +52,21 @@ const tradeController = {
     },
 
     deleteTrade: (req: Request, res: Response) => {
+        const userId = req.user.id;
         const tradeId = parseInt(req.params.id, 10);
-        TradeModel.delete(tradeId, (err, result) => {
+        TradeModel.delete(tradeId, userId, (err, result) => {
             if (err) {
                 return res.status(500).send(err.message);
             }
             if (result.changes === 0) {
-                return res.status(404).send('Trade not found');
+                return res.status(404).send('Trade not found or user not authorized');
             }
             res.status(204).send();
         });
     },
 
     createPartialExit: (req: Request, res: Response) => {
+        const userId = req.user.id;
         const tradeId = parseInt(req.params.id, 10);
         const { exit_quantity, exit_price, exit_date } = req.body;
 
@@ -68,9 +74,9 @@ const tradeController = {
             return res.status(400).json({ message: 'Exit quantity, price, and date are required, and quantity must be positive.' });
         }
 
-        TradeModel.find(tradeId, (err, originalTrade) => {
+        TradeModel.find(tradeId, userId, (err, originalTrade) => {
             if (err || !originalTrade) {
-                return res.status(500).json({ error: err ? err.message : 'Original trade not found' });
+                return res.status(500).json({ error: err ? err.message : 'Original trade not found or user not authorized' });
             }
             if (exit_quantity > originalTrade.quantity) {
                 return res.status(400).json({ message: 'Exit quantity cannot be greater than the trade quantity.' });
@@ -90,7 +96,7 @@ const tradeController = {
                 observations: `Partial exit from trade #${tradeId}. ${originalTrade.observations || ''}`.trim()
             };
 
-            TradeModel.create(partialTradeToCreate, (err, createResult) => {
+            TradeModel.create(partialTradeToCreate, userId, (err, createResult) => {
                 if (err) {
                     return res.status(500).json({ error: `Error creating partial trade: ${err.message}` });
                 }
@@ -99,14 +105,14 @@ const tradeController = {
 
                 if (new_quantity > 0) {
                     const updatedOriginalTrade: Trade = { ...originalTrade, quantity: new_quantity };
-                    TradeModel.update(tradeId, updatedOriginalTrade, (err, updateResult) => {
+                    TradeModel.update(tradeId, userId, updatedOriginalTrade, (err, updateResult) => {
                         if (err) {
                             return res.status(500).json({ error: `Error updating original trade: ${err.message}` });
                         }
                         res.status(200).json({ message: 'Partial exit executed successfully.' });
                     });
                 } else {
-                    TradeModel.delete(tradeId, (err, deleteResult) => {
+                    TradeModel.delete(tradeId, userId, (err, deleteResult) => {
                         if (err) {
                             return res.status(500).json({ error: `Error deleting original trade: ${err.message}` });
                         }
