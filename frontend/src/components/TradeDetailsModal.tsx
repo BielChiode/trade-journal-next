@@ -4,21 +4,22 @@ import {
   Trash2,
   TrendingUp,
   TrendingDown,
-  Info,
   GitCommitHorizontal,
+  CheckCircle,
+  Clock,
 } from "lucide-react";
 import Modal from "./ui/Modal";
 import TradeForm from "./TradeForm";
 import { Button } from "./ui/Button";
 import ConfirmationModal from "./ui/ConfirmationModal";
 import { Trade } from "../types/trade";
-import { getTradesByPositionId } from "../services/api";
 import { cn } from "../lib/utils";
+import { PositionSummary } from "../pages/DashboardPage";
 
 interface TradeDetailsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  trade: Trade | null;
+  position: PositionSummary | null;
   onUpdateTrade: (id: number, trade: Trade) => Promise<void>;
   onDeleteTrade: (id: number) => Promise<void>;
   onOpenPartialExit: (trade: Trade) => void;
@@ -28,7 +29,7 @@ interface TradeDetailsModalProps {
 const TradeDetailsModal: React.FC<TradeDetailsModalProps> = ({
   isOpen,
   onClose,
-  trade,
+  position,
   onUpdateTrade,
   onDeleteTrade,
   onOpenPartialExit,
@@ -37,29 +38,34 @@ const TradeDetailsModal: React.FC<TradeDetailsModalProps> = ({
   const [isEditing, setIsEditing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
-  const [positionTrades, setPositionTrades] = useState<Trade[]>([]);
+  const [tradeToEdit, setTradeToEdit] = useState<Trade | null>(null);
 
   useEffect(() => {
     if (isOpen) {
+      // Se startInEditMode for true, edita o trade de entrada
+      const initialTrade = position?.tradesInPosition.sort(
+        (a, b) =>
+          new Date(a.entry_date).getTime() - new Date(b.entry_date).getTime()
+      )[0];
+      setTradeToEdit(initialTrade || null);
       setIsEditing(startInEditMode);
-      if (trade?.position_id) {
-        getTradesByPositionId(trade.position_id)
-          .then((response) => {
-            setPositionTrades(response.data);
-          })
-          .catch(console.error);
-      }
     } else {
       setTimeout(() => {
         setIsEditing(false);
         setIsConfirmModalOpen(false);
+        setTradeToEdit(null);
       }, 200);
     }
-  }, [isOpen, startInEditMode, trade]);
+  }, [isOpen, startInEditMode, position]);
 
-  if (!trade) return null;
+  if (!position) return null;
 
   const handleEdit = () => {
+    const initialTrade = position.tradesInPosition.sort(
+      (a, b) =>
+        new Date(a.entry_date).getTime() - new Date(b.entry_date).getTime()
+    )[0];
+    setTradeToEdit(initialTrade);
     setIsEditing(true);
   };
 
@@ -68,13 +74,16 @@ const TradeDetailsModal: React.FC<TradeDetailsModalProps> = ({
       onClose();
     } else {
       setIsEditing(false);
+      setTradeToEdit(null);
     }
   };
 
   const handleUpdateTrade = async (tradeData: Trade) => {
+    if (!tradeToEdit) return;
     try {
-      await onUpdateTrade(trade.id!, tradeData);
+      await onUpdateTrade(tradeToEdit.id!, tradeData);
       setIsEditing(false);
+      setTradeToEdit(null);
       if (startInEditMode) {
         onClose();
       }
@@ -89,11 +98,12 @@ const TradeDetailsModal: React.FC<TradeDetailsModalProps> = ({
   };
 
   const handleConfirmDelete = async () => {
+    if (!tradeToEdit) return;
     setIsDeleting(true);
     try {
-      await onDeleteTrade(trade.id!);
+      await onDeleteTrade(tradeToEdit.id!);
       setIsConfirmModalOpen(false);
-      onClose(); // Fecha o modal de detalhes também
+      onClose();
     } catch (error) {
       console.error("Erro ao excluir trade:", error);
     } finally {
@@ -101,23 +111,12 @@ const TradeDetailsModal: React.FC<TradeDetailsModalProps> = ({
     }
   };
 
-  const initialQuantity = positionTrades.reduce(
-    (acc, t) => acc + (t.quantity || 0),
-    0
-  );
-  const openTrade = positionTrades.find((t) => t.exit_price == null);
-  console.log("openTrade", openTrade);
-  const openQuantity = openTrade ? openTrade.quantity : 0;
+  const isProfit = position.totalRealizedProfit >= 0;
 
-  console.log("openQuantity", openQuantity);
+  // Encontra o trade que ainda está aberto na posição
+  const openTrade = position.tradesInPosition.find((t) => !t.exit_date);
 
-  const totalRealizedProfit = positionTrades
-    .filter((t) => t.exit_price != 0)
-    .reduce((acc, t) => acc + (t.result || 0), 0);
-
-  const isProfit = totalRealizedProfit >= 0;
-
-  const closedTrades = positionTrades.filter(
+  const closedTrades = position.tradesInPosition.filter(
     (t) => t.exit_price != null && t.exit_price > 0
   );
   let averageExitPrice = 0;
@@ -144,13 +143,13 @@ const TradeDetailsModal: React.FC<TradeDetailsModalProps> = ({
     lastExitDate = latestTrade.exit_date || null;
   }
 
-  if (isEditing) {
+  if (isEditing && tradeToEdit) {
     return (
       <Modal isOpen={isOpen} onClose={onClose} title="Editar Trade">
         <TradeForm
           onUpdateTrade={handleUpdateTrade}
           onCancel={handleCancelEdit}
-          initialData={trade}
+          initialData={tradeToEdit}
           isEditing={true}
         />
       </Modal>
@@ -159,31 +158,53 @@ const TradeDetailsModal: React.FC<TradeDetailsModalProps> = ({
 
   return (
     <>
-      <Modal isOpen={isOpen} onClose={onClose} title="Detalhes do Trade">
+      <Modal isOpen={isOpen} onClose={onClose} title="Detalhes da Posição">
         <div className="space-y-4 sm:space-y-6">
           {/* Header com ticker e resultado */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <h3 className="text-xl sm:text-2xl font-bold">{trade.ticker}</h3>
+            <h3 className="text-xl sm:text-2xl font-bold">{position.ticker}</h3>
+            {position.status === "Closed" && (
+              <div
+                className={`flex items-center gap-2 px-3 py-1 rounded-full self-start sm:self-auto ${
+                  isProfit
+                    ? "bg-green-100 text-green-700"
+                    : "bg-red-100 text-red-700"
+                }`}
+              >
+                {isProfit ? (
+                  <TrendingUp size={16} />
+                ) : (
+                  <TrendingDown size={16} />
+                )}
+                <span className="font-semibold">
+                  R$ {position.totalRealizedProfit.toFixed(2)}
+                </span>
+              </div>
+            )}
+          </div>
+          <div className="pb-3 pt-2 border-t">
             <div
-              className={`flex items-center gap-2 px-3 py-1 rounded-full self-start sm:self-auto ${
-                isProfit
-                  ? "bg-green-100 text-green-700"
-                  : "bg-red-100 text-red-700"
-              }`}
+              className={cn(
+                "flex items-center gap-2 text-sm",
+                position.status === "Open" ? "text-blue-600" : "text-gray-500"
+              )}
             >
-              {isProfit ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
-              <span className="font-semibold">
-                R$ {totalRealizedProfit.toFixed(2)}
+              {position.status === "Open" ? (
+                <Clock size={12} />
+              ) : (
+                <CheckCircle size={12} />
+              )}
+              <span>
+                Posição {position.status === "Open" ? "Aberta" : "Fechada"}
               </span>
             </div>
           </div>
-
           {/* Histórico da Posição */}
-          {positionTrades.length > 1 && (
+          {position.tradesInPosition.length > 1 && (
             <div className="space-y-3 rounded-md border p-3">
               <h4 className="font-semibold text-base">Histórico da Posição</h4>
               {/* Trade em aberto */}
-              {positionTrades
+              {position.tradesInPosition
                 .filter((t) => !t.exit_price)
                 .map((t) => (
                   <div
@@ -197,7 +218,7 @@ const TradeDetailsModal: React.FC<TradeDetailsModalProps> = ({
                   </div>
                 ))}
               {/* Trades fechados */}
-              {positionTrades
+              {position.tradesInPosition
                 .filter((t) => t.exit_price != null && t.exit_price > 0)
                 .map((t) => (
                   <div
@@ -212,7 +233,7 @@ const TradeDetailsModal: React.FC<TradeDetailsModalProps> = ({
                         })}
                       </p>
                       <p className="text-xs text-gray-500">
-                        Qty: {t.quantity} - R$ {t.exit_price!.toFixed(2)}
+                        Qtd: {t.quantity} - R$ {t.exit_price!.toFixed(2)}
                       </p>
                     </div>
                     <p
@@ -227,12 +248,10 @@ const TradeDetailsModal: React.FC<TradeDetailsModalProps> = ({
               <div className="flex justify-between items-center text-sm font-bold pt-2 border-t">
                 <span>Total Realizado</span>
                 <span
-                  className={`${
-                    totalRealizedProfit >= 0 ? "text-green-600" : "text-red-600"
-                  }`}
+                  className={`${isProfit ? "text-green-600" : "text-red-600"}`}
                 >
-                  {totalRealizedProfit >= 0 ? "+" : ""}R${" "}
-                  {totalRealizedProfit.toFixed(2)}
+                  {isProfit ? "+" : ""}R${" "}
+                  {position.totalRealizedProfit.toFixed(2)}
                 </span>
               </div>
             </div>
@@ -248,12 +267,12 @@ const TradeDetailsModal: React.FC<TradeDetailsModalProps> = ({
                 <span
                   className={cn(
                     "px-2.5 py-0.5 text-sm font-semibold rounded-full",
-                    trade.type === "Buy"
+                    position.type === "Buy"
                       ? "bg-blue-100 text-blue-800"
                       : "bg-red-100 text-red-800"
                   )}
                 >
-                  {trade.type === "Buy" ? "Compra" : "Venda"}
+                  {position.type === "Buy" ? "Compra" : "Venda"}
                 </span>
               </div>
             </div>
@@ -262,7 +281,7 @@ const TradeDetailsModal: React.FC<TradeDetailsModalProps> = ({
                 Data de Entrada
               </label>
               <p className="mt-1 text-sm sm:text-base font-medium">
-                {new Date(trade.entry_date).toLocaleDateString("pt-BR", {
+                {new Date(position.entry_date).toLocaleDateString("pt-BR", {
                   timeZone: "UTC",
                 })}
               </p>
@@ -272,12 +291,14 @@ const TradeDetailsModal: React.FC<TradeDetailsModalProps> = ({
                 Preço de Entrada
               </label>
               <p className="mt-1 text-sm sm:text-base font-medium">
-                R$ {trade.entry_price.toFixed(2)}
+                R$ {position.entry_price.toFixed(2)}
               </p>
             </div>
             <div>
               <label className="text-xs sm:text-sm font-medium text-gray-600">
-                {openQuantity > 0 ? "Preço Médio de Saída" : "Preço de Saída"}
+                {closedTrades.length > 1
+                  ? "Preço Médio de Saída"
+                  : "Preço de Saída"}
               </label>
               <p className="mt-1 text-sm sm:text-base font-medium">
                 {closedTrades.length > 0
@@ -290,7 +311,7 @@ const TradeDetailsModal: React.FC<TradeDetailsModalProps> = ({
                 Quantidade
               </label>
               <p className="mt-1 text-sm sm:text-base font-medium">
-                {initialQuantity}
+                {position.initialQuantity}
               </p>
             </div>
 
@@ -309,23 +330,23 @@ const TradeDetailsModal: React.FC<TradeDetailsModalProps> = ({
           </div>
 
           {/* Additional Info */}
-          {(trade.setup || trade.observations) && (
+          {(position.setup || position.observations) && (
             <div className="space-y-3">
-              {trade.setup && (
+              {position.setup && (
                 <div>
                   <label className="text-xs sm:text-sm font-medium text-gray-600">
                     Setup
                   </label>
-                  <p className="mt-1 text-sm sm:text-base">{trade.setup}</p>
+                  <p className="mt-1 text-sm sm:text-base">{position.setup}</p>
                 </div>
               )}
-              {trade.observations && (
+              {position.observations && (
                 <div>
                   <label className="text-xs sm:text-sm font-medium text-gray-600">
                     Observações
                   </label>
                   <p className="mt-1 text-sm sm:text-base whitespace-pre-wrap">
-                    {trade.observations}
+                    {position.observations}
                   </p>
                 </div>
               )}
@@ -334,10 +355,10 @@ const TradeDetailsModal: React.FC<TradeDetailsModalProps> = ({
         </div>
         {/* Actions */}
         <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-6 pt-4 border-t">
-          {openQuantity > 0 && (
+          {openTrade && (
             <Button
               variant="outline"
-              onClick={() => onOpenPartialExit(openTrade!)}
+              onClick={() => onOpenPartialExit(openTrade)}
             >
               <GitCommitHorizontal size={16} className="mr-2" />
               Registrar Saída Parcial
