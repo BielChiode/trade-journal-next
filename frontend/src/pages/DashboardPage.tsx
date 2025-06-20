@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { PlusCircle, Plus, Edit, LogOut } from "lucide-react";
+import React, { useState, useEffect, useMemo } from "react";
+import { PlusCircle, Plus, Edit, LogOut, Search } from "lucide-react";
 import {
   getTrades,
   addTrade,
@@ -7,7 +7,6 @@ import {
   deleteTrade,
   executePartialExit,
   incrementPosition,
-  getTradesByPositionId
 } from "../services/tradeService";
 import { Button } from "../components/ui/Button";
 import {
@@ -23,10 +22,11 @@ import TradeForm from "../components/TradeForm";
 import TradeDetailsModal from "../components/TradeDetailsModal";
 import { Trade } from "../types/trade";
 import PartialExitForm from "../components/PartialExitForm";
-import ConfirmationModal from "../components/ui/ConfirmationModal";
 import { formatCurrency } from "../lib/utils";
 import { useAuth } from "../contexts/AuthContext";
 import PositionIncrementForm from "../components/PositionIncrementForm";
+import { Input } from "../components/ui/Input";
+import { cn } from "../lib/utils";
 
 // Adicionar uma nova interface para o resumo da posição
 export interface PositionSummary extends Trade {
@@ -71,7 +71,7 @@ const summarizePositions = (trades: Trade[]): PositionSummary[] => {
       (t) => !t.exit_date && !t.observations?.startsWith("Increment to trade")
     );
     const openQuantity = mainOpenTrade ? mainOpenTrade.quantity : 0;
-    
+
     // The status is determined simply by whether there's an open quantity.
     const status: "Open" | "Closed" = openQuantity > 0 ? "Open" : "Closed";
 
@@ -110,8 +110,6 @@ const DashboardPage: React.FC = () => {
   const [selectedPosition, setSelectedPosition] =
     useState<PositionSummary | null>(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
-  const [tradeToDelete, setTradeToDelete] = useState<Trade | null>(null);
-  const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
   const [startInEditMode, setStartInEditMode] = useState(false);
   const [isPartialExitModalOpen, setIsPartialExitModalOpen] = useState(false);
   const [tradeForPartialExit, setTradeForPartialExit] = useState<Trade | null>(
@@ -120,11 +118,23 @@ const DashboardPage: React.FC = () => {
   const [initialCapital, setInitialCapital] = useState<number>(0);
   const [isEditingCapital, setIsEditingCapital] = useState<boolean>(false);
   const [tempCapital, setTempCapital] = useState<string>("0");
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isIncrementModalOpen, setIsIncrementModalOpen] = useState(false);
-  const [tradeForIncrement, setTradeForIncrement] = useState<Trade | null>(null);
-  const [selectedTrade, setSelectedTrade] = useState<Trade | null>(null);
-  const [detailsTrade, setDetailsTrade] = useState<Trade | null>(null);
+  const [tradeForIncrement, setTradeForIncrement] = useState<Trade | null>(
+    null
+  );
+  
+  // Filter states with localStorage initialization
+  const [statusFilter, setStatusFilter] = useState<"all" | "Open" | "Closed">(
+    () => {
+      return (localStorage.getItem('filter_status') as 'all' | 'Open' | 'Closed' | null) || 'all';
+    }
+  );
+  const [tickerSearch, setTickerSearch] = useState(() => {
+    return localStorage.getItem('filter_ticker') || '';
+  });
+  const [resultFilter, setResultFilter] = useState<'all' | 'profit' | 'loss'>(() => {
+    return (localStorage.getItem('filter_result') as 'all' | 'profit' | 'loss' | null) || 'all';
+  });
 
   useEffect(() => {
     loadTrades();
@@ -137,6 +147,13 @@ const DashboardPage: React.FC = () => {
       }
     }
   }, []);
+
+  // Effect to save filters to cache
+  useEffect(() => {
+    localStorage.setItem('filter_status', statusFilter);
+    localStorage.setItem('filter_ticker', tickerSearch);
+    localStorage.setItem('filter_result', resultFilter);
+  }, [statusFilter, tickerSearch, resultFilter]);
 
   const loadTrades = async () => {
     try {
@@ -236,18 +253,6 @@ const DashboardPage: React.FC = () => {
     setIsDetailsModalOpen(true);
   };
 
-  const handleAddExitPrice = (trade: Trade) => {
-    // Encontra a posição correspondente ao trade
-    const position = positions.find((p) =>
-      p.tradesInPosition.some((t) => t.id === trade.id)
-    );
-    if (position) {
-      setSelectedPosition(position);
-      setStartInEditMode(true);
-      setIsDetailsModalOpen(true);
-    }
-  };
-
   const handleOpenPartialExitModal = (trade: Trade) => {
     setTradeForPartialExit(trade);
     setIsPartialExitModalOpen(true);
@@ -267,7 +272,7 @@ const DashboardPage: React.FC = () => {
     try {
       await executePartialExit(tradeForPartialExit.id!, exitData);
       setIsPartialExitModalOpen(false);
-      
+
       // Re-fetch all trades and update the currently selected position for the modal
       const response = await getTrades();
       const newPositions = summarizePositions(response.data);
@@ -282,7 +287,7 @@ const DashboardPage: React.FC = () => {
 
       setTradeForPartialExit(null);
     } catch (error) {
-      console.error('Failed to execute partial exit', error);
+      console.error("Failed to execute partial exit", error);
     }
   };
 
@@ -295,7 +300,7 @@ const DashboardPage: React.FC = () => {
     try {
       await incrementPosition(tradeForIncrement.id!, incrementData);
       setIsIncrementModalOpen(false);
-      
+
       // Re-fetch all trades and update the currently selected position for the modal
       const response = await getTrades();
       const newPositions = summarizePositions(response.data);
@@ -307,10 +312,10 @@ const DashboardPage: React.FC = () => {
         );
         setSelectedPosition(updatedSelectedPosition || null);
       }
-      
+
       setTradeForIncrement(null);
     } catch (error) {
-      console.error('Failed to increment position', error);
+      console.error("Failed to increment position", error);
     }
   };
 
@@ -321,6 +326,12 @@ const DashboardPage: React.FC = () => {
       localStorage.setItem("initialCapital", tempCapital);
       setIsEditingCapital(false);
     }
+  };
+
+  const handleClearFilters = () => {
+    setStatusFilter("all");
+    setTickerSearch("");
+    setResultFilter("all");
   };
 
   const closedTrades = positions.filter((p) => p.status === "Closed");
@@ -338,6 +349,40 @@ const DashboardPage: React.FC = () => {
           totalTrades) *
         100
       : 0;
+
+  const isFilterActive =
+    statusFilter !== "all" || tickerSearch !== "" || resultFilter !== "all";
+
+  const filteredPositions = useMemo(() => {
+    return positions.filter((position) => {
+      // Status filter
+      if (statusFilter !== "all" && position.status !== statusFilter) {
+        return false;
+      }
+
+      // Ticker search filter
+      if (
+        tickerSearch &&
+        !position.ticker.toLowerCase().includes(tickerSearch.toLowerCase())
+      ) {
+        return false;
+      }
+
+      // Result filter
+      if (resultFilter !== "all") {
+        if (position.status === "Open") return false; // Hide open positions if filtering by result
+
+        if (resultFilter === "profit" && position.totalRealizedProfit <= 0) {
+          return false;
+        }
+        if (resultFilter === "loss" && position.totalRealizedProfit > 0) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [positions, statusFilter, tickerSearch, resultFilter]);
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -470,35 +515,88 @@ const DashboardPage: React.FC = () => {
                 <CardTitle>Gráfico de Lucro Cumulativo</CardTitle>
               </CardHeader>
               <CardContent>
-                <CumulativeProfitChart trades={positions} />
+                <CumulativeProfitChart positions={positions} />
               </CardContent>
             </Card>
           </div>
         </div>
 
         {/* Histórico de trades */}
-        <div className="mt-6">
-          <div className="flex items-center gap-3 mb-3 sm:mb-4">
-            <h2 className="text-xl sm:text-2xl font-bold">
-              Histórico de Trades
-            </h2>
-            <Button
-              variant="outline"
-              size="icon"
-              className="rounded-full"
-              title="Novo Trade"
-              onClick={() => {
-                setCurrentTrade(null);
-                setIsTradeModalOpen(true);
-              }}
-            >
-              <Plus className="h-4 w-4" />
-            </Button>
+        <div className="mt-6 mb-6">
+          <div className="flex flex-wrap items-center justify-between gap-y-3 gap-x-4 mb-3 sm:mb-4">
+            <div className="flex items-center gap-3">
+              <h2 className="text-xl sm:text-2xl font-bold">
+                Histórico de Trades
+              </h2>
+              <Button
+                variant="outline"
+                size="icon"
+                className="rounded-full"
+                title="Novo Trade"
+                onClick={() => {
+                  setCurrentTrade(null);
+                  setIsTradeModalOpen(true);
+                }}
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
+            {/* Filters */}
+            <div className="flex flex-wrap items-center gap-2">
+              {isFilterActive && (
+                <Button
+                  variant="link"
+                  onClick={handleClearFilters}
+                  className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+                >
+                  Limpar Filtros
+                </Button>
+              )}
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  placeholder="Buscar ticker..."
+                  value={tickerSearch}
+                  onChange={(e) => setTickerSearch(e.target.value)}
+                  className="pl-8 w-32 h-9"
+                />
+              </div>
+              <div className="flex items-center p-1 bg-gray-100 rounded-lg">
+                <Button variant={statusFilter === 'all' ? 'default' : 'ghost'} size="sm" onClick={() => setStatusFilter('all')} className="h-7">Todos</Button>
+                <Button variant={statusFilter === 'Open' ? 'default' : 'ghost'} size="sm" onClick={() => setStatusFilter('Open')} className="h-7">Abertos</Button>
+                <Button variant={statusFilter === 'Closed' ? 'default' : 'ghost'} size="sm" onClick={() => setStatusFilter('Closed')} className="h-7">Fechados</Button>
+              </div>
+              <div className="flex items-center p-1 bg-gray-100 rounded-lg">
+                <Button variant={resultFilter === 'all' ? 'default' : 'ghost'} size="sm" onClick={() => setResultFilter('all')} className="h-7">Resultado</Button>
+                <Button
+                    variant={resultFilter === 'profit' ? 'secondary' : 'ghost'}
+                    size="sm"
+                    onClick={() => setResultFilter('profit')}
+                    className={cn("h-7", {
+                        "bg-green-100 text-green-700 font-semibold": resultFilter === 'profit',
+                        "text-green-600": resultFilter !== 'profit',
+                    })}
+                >
+                    Lucro
+                </Button>
+                <Button
+                    variant={resultFilter === 'loss' ? 'secondary' : 'ghost'}
+                    size="sm"
+                    onClick={() => setResultFilter('loss')}
+                    className={cn("h-7", {
+                        "bg-red-100 text-red-700 font-semibold": resultFilter === 'loss',
+                        "text-red-600": resultFilter !== 'loss'
+                    })}
+                >
+                    Prejuízo
+                </Button>
+              </div>
+            </div>
           </div>
           <div className="max-h-[520px] sm:max-h-[580px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
             <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-              {positions.length > 0 ? (
-                positions.map((position) => (
+              {filteredPositions.length > 0 ? (
+                filteredPositions.map((position) => (
                   <TradeCard
                     key={position.id}
                     position={position}
@@ -507,10 +605,7 @@ const DashboardPage: React.FC = () => {
                 ))
               ) : (
                 <div className="col-span-full text-center py-8 text-gray-500">
-                  <p>Nenhum trade encontrado.</p>
-                  <p className="text-sm mt-1">
-                    Clique em "Novo Trade" para começar.
-                  </p>
+                  <p>Nenhum trade encontrado para os filtros selecionados.</p>
                 </div>
               )}
             </div>
@@ -571,19 +666,6 @@ const DashboardPage: React.FC = () => {
             currentQuantity={tradeForIncrement.quantity}
           />
         </Modal>
-      )}
-
-      {tradeToDelete && (
-        <ConfirmationModal
-          isOpen={isConfirmationModalOpen}
-          onClose={() => setIsConfirmationModalOpen(false)}
-          onConfirm={() => {
-            handleDeleteTrade(tradeToDelete.id!);
-            setTradeToDelete(null);
-          }}
-          title="Confirmar Exclusão"
-          message="Tem certeza de que deseja excluir este trade?"
-        />
       )}
     </div>
   );
