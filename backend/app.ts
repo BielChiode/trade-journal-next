@@ -23,6 +23,7 @@ router.get('/trades/position/:positionId', protect, tradeController.getTradesByP
 router.post('/trades', protect, tradeController.addTrade);
 router.put('/trades/:id', protect, tradeController.updateTrade);
 router.post('/trades/:id/partial-exit', protect, tradeController.createPartialExit);
+router.post('/trades/:id/increment', protect, tradeController.incrementPosition);
 router.delete('/trades/:id', protect, tradeController.deleteTrade);
 
 app.use('/api', router);

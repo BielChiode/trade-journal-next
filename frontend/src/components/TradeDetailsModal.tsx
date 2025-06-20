@@ -9,6 +9,7 @@ import {
   Clock,
   ArrowUp,
   ArrowDown,
+  PlusCircle,
 } from "lucide-react";
 import Modal from "./ui/Modal";
 import TradeForm from "./TradeForm";
@@ -26,6 +27,7 @@ interface TradeDetailsModalProps {
   onUpdateTrade: (id: number, trade: Trade) => Promise<void>;
   onDeleteTrade: (id: number) => Promise<void>;
   onOpenPartialExit: (trade: Trade) => void;
+  onOpenIncrement: (trade: Trade) => void;
   startInEditMode?: boolean;
 }
 
@@ -36,6 +38,7 @@ const TradeDetailsModal: React.FC<TradeDetailsModalProps> = ({
   onUpdateTrade,
   onDeleteTrade,
   onOpenPartialExit,
+  onOpenIncrement,
   startInEditMode = false,
 }) => {
   const [isEditing, setIsEditing] = useState(false);
@@ -116,8 +119,24 @@ const TradeDetailsModal: React.FC<TradeDetailsModalProps> = ({
 
   const isProfit = position.totalRealizedProfit >= 0;
 
-  // Encontra o trade que ainda está aberto na posição
-  const openTrade = position.tradesInPosition.find((t) => !t.exit_date);
+  // Encontra o trade principal que ainda está aberto na posição
+  const openTrade = position.tradesInPosition.find(
+    (t) => !t.exit_date && !t.observations?.startsWith("Increment to trade")
+  );
+
+  // Filtra os eventos de histórico (parciais e incrementos)
+  const historyEvents = position.tradesInPosition
+    .filter((trade) => {
+      const isPartialExit = !!trade.exit_date;
+      const isIncrement =
+        !trade.exit_date && trade.observations?.startsWith("Increment to trade");
+      return isPartialExit || isIncrement;
+    })
+    .sort((a, b) => {
+      const dateA = new Date(a.exit_date || a.entry_date).getTime();
+      const dateB = new Date(b.exit_date || b.entry_date).getTime();
+      return dateA - dateB;
+    });
 
   const closedTrades = position.tradesInPosition.filter(
     (t) => t.exit_price != null && t.exit_price > 0
@@ -207,68 +226,97 @@ const TradeDetailsModal: React.FC<TradeDetailsModalProps> = ({
             </div>
           </div>
           {/* Histórico da Posição */}
-          {position.tradesInPosition.length > 1 && (
+          {historyEvents.length > 0 && (
             <div className="space-y-3 rounded-md border p-3">
               <h4 className="font-semibold text-base">Histórico da Posição</h4>
-              {/* Trade em aberto */}
-              {position.tradesInPosition
-                .filter((t) => !t.exit_price)
-                .map((t) => (
-                  <div
-                    key={`open-${t.id}`}
-                    className="flex justify-between items-center text-sm"
-                  >
-                    <span className="flex items-center gap-2 text-gray-600">
-                      <GitCommitHorizontal size={14} /> Posição Aberta
-                    </span>
-                    <span className="font-medium">{t.quantity} ações</span>
-                  </div>
-                ))}
-              {/* Trades fechados */}
-              {position.tradesInPosition
-                .filter((t) => t.exit_price != null && t.exit_price > 0)
-                .map((t) => (
-                  <div
-                    key={t.id}
-                    className="flex justify-between items-center text-sm py-1"
-                  >
-                    <div className="flex items-center gap-2">
-                      {position.type === "Buy" ? (
-                        <ArrowDown size={18} className="text-red-500" />
-                      ) : (
-                        <ArrowUp size={18} className="text-blue-500" />
-                      )}
-                      <div>
-                        <p className="font-medium text-gray-800">
-                          {position.type === "Buy" ? "Venda" : "Compra"}:{" "}
-                          {t.quantity} @ R$ {t.exit_price!.toFixed(2)}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          Saída em{" "}
-                          {new Date(t.exit_date!).toLocaleDateString("pt-BR", {
-                            timeZone: "UTC",
-                          })}
-                        </p>
+              {historyEvents.map((event) => {
+                const isIncrement = event.observations?.startsWith(
+                  "Increment to trade"
+                );
+
+                if (isIncrement) {
+                  return (
+                    <div
+                      key={`event-${event.id}`}
+                      className="flex justify-between items-center text-sm py-1"
+                    >
+                      <div className="flex items-center gap-2">
+                        {position.type === "Buy" ? (
+                          <ArrowUp size={18} className="text-green-500" />
+                        ) : (
+                          <ArrowDown size={18} className="text-green-500" />
+                        )}
+                        <div>
+                          <p className="font-medium text-gray-800">
+                            Incremento: {event.quantity} @ R${" "}
+                            {event.entry_price.toFixed(2)}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            Em{" "}
+                            {new Date(event.entry_date).toLocaleDateString(
+                              "pt-BR",
+                              { timeZone: "UTC" }
+                            )}
+                          </p>
+                        </div>
                       </div>
                     </div>
-                    <p
-                      className={`font-semibold ${
-                        t.result! >= 0 ? "text-green-600" : "text-red-600"
-                      }`}
+                  );
+                } else {
+                  // É uma saída parcial
+                  return (
+                    <div
+                      key={`event-${event.id}`}
+                      className="flex justify-between items-center text-sm py-1"
                     >
-                      {t.result! >= 0 ? "+" : ""}R$ {t.result!.toFixed(2)}
-                    </p>
+                      <div className="flex items-center gap-2">
+                        {position.type === "Buy" ? (
+                          <ArrowDown size={18} className="text-red-500" />
+                        ) : (
+                          <ArrowUp size={18} className="text-blue-500" />
+                        )}
+                        <div>
+                          <p className="font-medium text-gray-800">
+                            {position.type === "Buy"
+                              ? "Venda Parcial"
+                              : "Compra Parcial"}
+                            : {event.quantity} @ R$ {event.exit_price!.toFixed(2)}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            Saída em{" "}
+                            {new Date(event.exit_date!).toLocaleDateString(
+                              "pt-BR",
+                              { timeZone: "UTC" }
+                            )}
+                          </p>
+                        </div>
+                      </div>
+                      <p
+                        className={`font-semibold ${
+                          event.result! >= 0
+                            ? "text-green-600"
+                            : "text-red-600"
+                        }`}
+                      >
+                        {event.result! >= 0 ? "+" : ""}R${" "}
+                        {event.result!.toFixed(2)}
+                      </p>
+                    </div>
+                  );
+                }
+              })}
+              {/* Total Realizado */}
+              {closedTrades.length > 0 && (
+                  <div className="flex justify-between items-center text-sm font-bold pt-2 border-t">
+                    <span>Total Realizado</span>
+                    <span
+                      className={`${isProfit ? "text-green-600" : "text-red-600"}`}
+                    >
+                      {isProfit ? "+" : ""}R${" "}
+                      {position.totalRealizedProfit.toFixed(2)}
+                    </span>
                   </div>
-                ))}
-              <div className="flex justify-between items-center text-sm font-bold pt-2 border-t">
-                <span>Total Realizado</span>
-                <span
-                  className={`${isProfit ? "text-green-600" : "text-red-600"}`}
-                >
-                  {isProfit ? "+" : ""}R${" "}
-                  {position.totalRealizedProfit.toFixed(2)}
-                </span>
-              </div>
+              )}
             </div>
           )}
 
@@ -321,14 +369,35 @@ const TradeDetailsModal: React.FC<TradeDetailsModalProps> = ({
                   : "-"}
               </p>
             </div>
-            <div>
-              <label className="text-xs sm:text-sm font-medium text-gray-600">
-                Quantidade
-              </label>
-              <p className="mt-1 text-sm sm:text-base font-medium">
-                {position.initialQuantity}
-              </p>
-            </div>
+            {position.status === 'Open' ? (
+              <>
+                <div>
+                  <label className="text-xs sm:text-sm font-medium text-gray-600">
+                    Quantidade Inicial
+                  </label>
+                  <p className="mt-1 text-sm sm:text-base font-medium">
+                    {position.initialQuantity}
+                  </p>
+                </div>
+                <div>
+                  <label className="text-xs sm:text-sm font-medium text-gray-600">
+                    Quantidade em Aberto
+                  </label>
+                  <p className="mt-1 text-sm sm:text-base font-medium">
+                    {position.openQuantity}
+                  </p>
+                </div>
+              </>
+            ) : (
+              <div>
+                <label className="text-xs sm:text-sm font-medium text-gray-600">
+                  Quantidade Total
+                </label>
+                <p className="mt-1 text-sm sm:text-base font-medium">
+                  {position.initialQuantity}
+                </p>
+              </div>
+            )}
 
             <div>
               <label className="text-xs sm:text-sm font-medium text-gray-600">
@@ -368,20 +437,33 @@ const TradeDetailsModal: React.FC<TradeDetailsModalProps> = ({
             </div>
           )}
         </div>
-        {/* Actions */}
+        {/* Botões de Ação */}
         <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-6 pt-4 border-t">
           {openTrade && (
-            <Button
-              variant="outline"
-              onClick={() => onOpenPartialExit(openTrade)}
-              disabled={isDeleting}
-            >
-              <GitCommitHorizontal size={16} className="mr-2" />
-              Registrar Saída Parcial
-            </Button>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+              <Button
+                variant="outline"
+                onClick={() => onOpenPartialExit(openTrade)}
+                className="w-full"
+              >
+                <TrendingDown className="mr-2 h-4 w-4" /> Saída Parcial
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => onOpenIncrement(openTrade)}
+                className="w-full"
+              >
+                <PlusCircle className="mr-2 h-4 w-4" /> Incrementar Posição
+              </Button>
+            </div>
           )}
 
-          <Button variant="outline" onClick={handleEdit} disabled={isDeleting}>
+          <Button
+            variant="default"
+            onClick={handleEdit}
+            disabled={isDeleting}
+            className="w-full sm:w-auto"
+          >
             <Edit size={16} className="mr-2" />
             Editar
           </Button>
@@ -389,13 +471,14 @@ const TradeDetailsModal: React.FC<TradeDetailsModalProps> = ({
             variant="destructive"
             onClick={handleDeleteClick}
             disabled={isDeleting}
+            className="w-full sm:w-auto"
           >
             {isDeleting ? (
               <ButtonLoader text="Excluindo..." />
             ) : (
               <>
                 <Trash2 size={16} className="mr-2" />
-                Excluir
+                Excluir Posição
               </>
             )}
           </Button>

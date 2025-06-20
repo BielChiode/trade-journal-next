@@ -65,6 +65,57 @@ const tradeController = {
         });
     },
 
+    incrementPosition: (req: Request, res: Response) => {
+        const userId = req.user.id;
+        const tradeId = parseInt(req.params.id, 10);
+        const { increment_quantity, increment_price, increment_date } = req.body;
+
+        if (!increment_quantity || !increment_price || !increment_date || increment_quantity <= 0) {
+            return res.status(400).json({ message: 'Increment quantity, price, and date are required, and quantity must be positive.' });
+        }
+
+        TradeModel.find(tradeId, userId, (err, originalTrade) => {
+            if (err || !originalTrade) {
+                return res.status(500).json({ error: err ? err.message : 'Original trade not found or user not authorized' });
+            }
+
+            const original_quantity = originalTrade.quantity;
+            const original_entry_price = originalTrade.entry_price;
+
+            const new_quantity = original_quantity + increment_quantity;
+            const new_avg_price = ((original_quantity * original_entry_price) + (increment_quantity * increment_price)) / new_quantity;
+
+            const updatedTrade: Trade = {
+                ...originalTrade,
+                quantity: new_quantity,
+                entry_price: new_avg_price
+            };
+
+            TradeModel.update(tradeId, userId, updatedTrade, (err, updateResult) => {
+                if (err) {
+                    return res.status(500).json({ error: `Error updating original trade: ${err.message}` });
+                }
+
+                const incrementLogTrade: Trade = {
+                    ticker: originalTrade.ticker,
+                    type: 'Buy',
+                    entry_date: increment_date,
+                    entry_price: increment_price,
+                    quantity: increment_quantity,
+                    position_id: originalTrade.position_id,
+                    observations: `Increment to trade #${tradeId}`
+                };
+
+                TradeModel.create(incrementLogTrade, userId, (err, createResult) => {
+                    if (err) {
+                        return res.status(500).json({ error: `Error creating increment log trade: ${err.message}` });
+                    }
+                    res.status(200).json({ message: 'Position incremented successfully.' });
+                });
+            });
+        });
+    },
+
     createPartialExit: (req: Request, res: Response) => {
         const userId = req.user.id;
         const tradeId = parseInt(req.params.id, 10);
