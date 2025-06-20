@@ -21,4 +21,11 @@ export const executePartialExit = (
     `/trades/${tradeId}/partial-exit`,
     exitData
   );
+};
+
+export const incrementPosition = (
+    tradeId: number,
+    incrementData: { increment_quantity: number; increment_price: number; increment_date: string }
+) => {
+    return apiClient.post(`/trades/${tradeId}/increment`, incrementData);
 }; 

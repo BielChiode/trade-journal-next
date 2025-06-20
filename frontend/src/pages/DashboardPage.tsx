@@ -6,6 +6,8 @@ import {
   updateTrade,
   deleteTrade,
   executePartialExit,
+  incrementPosition,
+  getTradesByPositionId
 } from "../services/tradeService";
 import { Button } from "../components/ui/Button";
 import {
@@ -24,6 +26,7 @@ import PartialExitForm from "../components/PartialExitForm";
 import ConfirmationModal from "../components/ui/ConfirmationModal";
 import { formatCurrency } from "../lib/utils";
 import { useAuth } from "../contexts/AuthContext";
+import PositionIncrementForm from "../components/PositionIncrementForm";
 
 // Adicionar uma nova interface para o resumo da posição
 export interface PositionSummary extends Trade {
@@ -55,23 +58,38 @@ const summarizePositions = (trades: Trade[]): PositionSummary[] => {
       (a, b) =>
         new Date(a.entry_date).getTime() - new Date(b.entry_date).getTime()
     )[0];
-    const openTrade = tradesInPosition.find((t) => !t.exit_date);
 
-    const initialQuantity = tradesInPosition.reduce(
+    // Find all partial exit trades and sum their quantities.
+    const exitTrades = tradesInPosition.filter((t) => !!t.exit_date);
+    const totalExitQuantity = exitTrades.reduce(
       (acc, t) => acc + t.quantity,
       0
     );
-    const totalRealizedProfit = tradesInPosition
-      .filter((t) => t.exit_date)
-      .reduce((acc, t) => acc + (t.result || 0), 0);
+
+    // Find the main trade record. Its quantity represents the current open quantity.
+    const mainOpenTrade = tradesInPosition.find(
+      (t) => !t.exit_date && !t.observations?.startsWith("Increment to trade")
+    );
+    const openQuantity = mainOpenTrade ? mainOpenTrade.quantity : 0;
+    
+    // The status is determined simply by whether there's an open quantity.
+    const status: "Open" | "Closed" = openQuantity > 0 ? "Open" : "Closed";
+
+    // Reconstruct the total entry quantity for display purposes.
+    const totalEntryQuantity = openQuantity + totalExitQuantity;
+
+    const totalRealizedProfit = exitTrades.reduce(
+      (acc, t) => acc + (t.result || 0),
+      0
+    );
 
     summaries.push({
       ...initialTrade,
-      id: positionId, // Use positionId as the unique ID for the card
-      initialQuantity,
-      openQuantity: openTrade?.quantity || 0,
+      id: positionId,
+      initialQuantity: totalEntryQuantity,
+      openQuantity: openQuantity,
       totalRealizedProfit,
-      status: openTrade ? "Open" : "Closed",
+      status: status,
       tradesInPosition,
     });
   });
@@ -102,6 +120,11 @@ const DashboardPage: React.FC = () => {
   const [initialCapital, setInitialCapital] = useState<number>(0);
   const [isEditingCapital, setIsEditingCapital] = useState<boolean>(false);
   const [tempCapital, setTempCapital] = useState<string>("0");
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isIncrementModalOpen, setIsIncrementModalOpen] = useState(false);
+  const [tradeForIncrement, setTradeForIncrement] = useState<Trade | null>(null);
+  const [selectedTrade, setSelectedTrade] = useState<Trade | null>(null);
+  const [detailsTrade, setDetailsTrade] = useState<Trade | null>(null);
 
   useEffect(() => {
     loadTrades();
@@ -230,6 +253,11 @@ const DashboardPage: React.FC = () => {
     setIsPartialExitModalOpen(true);
   };
 
+  const handleOpenIncrementModal = (trade: Trade) => {
+    setTradeForIncrement(trade);
+    setIsIncrementModalOpen(true);
+  };
+
   const handlePartialExitSubmit = async (exitData: {
     exit_quantity: number;
     exit_price: number;
@@ -237,12 +265,10 @@ const DashboardPage: React.FC = () => {
   }) => {
     if (!tradeForPartialExit) return;
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1500));
       await executePartialExit(tradeForPartialExit.id!, exitData);
       setIsPartialExitModalOpen(false);
-      setTradeForPartialExit(null);
-
-      // Recarrega os trades e atualiza a posição selecionada
+      
+      // Re-fetch all trades and update the currently selected position for the modal
       const response = await getTrades();
       const newPositions = summarizePositions(response.data);
       setPositions(newPositions);
@@ -253,9 +279,38 @@ const DashboardPage: React.FC = () => {
         );
         setSelectedPosition(updatedSelectedPosition || null);
       }
+
+      setTradeForPartialExit(null);
     } catch (error) {
-      console.error("Erro ao executar saída parcial:", error);
-      // Adicionar feedback para o usuário aqui, se desejar
+      console.error('Failed to execute partial exit', error);
+    }
+  };
+
+  const handleIncrementSubmit = async (incrementData: {
+    increment_quantity: number;
+    increment_price: number;
+    increment_date: string;
+  }) => {
+    if (!tradeForIncrement) return;
+    try {
+      await incrementPosition(tradeForIncrement.id!, incrementData);
+      setIsIncrementModalOpen(false);
+      
+      // Re-fetch all trades and update the currently selected position for the modal
+      const response = await getTrades();
+      const newPositions = summarizePositions(response.data);
+      setPositions(newPositions);
+
+      if (selectedPosition) {
+        const updatedSelectedPosition = newPositions.find(
+          (p) => p.id === selectedPosition.id
+        );
+        setSelectedPosition(updatedSelectedPosition || null);
+      }
+      
+      setTradeForIncrement(null);
+    } catch (error) {
+      console.error('Failed to increment position', error);
     }
   };
 
@@ -485,6 +540,7 @@ const DashboardPage: React.FC = () => {
           onUpdateTrade={handleUpdateTrade}
           onDeleteTrade={handleDeleteTrade}
           onOpenPartialExit={handleOpenPartialExitModal}
+          onOpenIncrement={handleOpenIncrementModal}
           startInEditMode={startInEditMode}
         />
       )}
@@ -499,6 +555,20 @@ const DashboardPage: React.FC = () => {
             onSubmit={handlePartialExitSubmit}
             onCancel={() => setIsPartialExitModalOpen(false)}
             remainingQuantity={tradeForPartialExit.quantity}
+          />
+        </Modal>
+      )}
+
+      {isIncrementModalOpen && tradeForIncrement && (
+        <Modal
+          isOpen={isIncrementModalOpen}
+          onClose={() => setIsIncrementModalOpen(false)}
+          title={`Incrementar Posição em ${tradeForIncrement.ticker}`}
+        >
+          <PositionIncrementForm
+            onSubmit={handleIncrementSubmit}
+            onCancel={() => setIsIncrementModalOpen(false)}
+            currentQuantity={tradeForIncrement.quantity}
           />
         </Modal>
       )}
