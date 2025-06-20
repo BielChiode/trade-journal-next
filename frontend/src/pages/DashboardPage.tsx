@@ -1,13 +1,6 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useMemo } from "react";
 import { PlusCircle, Plus, Edit, LogOut, Search } from "lucide-react";
-import {
-  getTrades,
-  addTrade,
-  updateTrade,
-  deleteTrade,
-  executePartialExit,
-  incrementPosition,
-} from "../services/tradeService";
+
 import { Button } from "../components/ui/Button";
 import {
   Card,
@@ -27,225 +20,52 @@ import { useAuth } from "../contexts/AuthContext";
 import PositionIncrementForm from "../components/PositionIncrementForm";
 import { Input } from "../components/ui/Input";
 import { cn } from "../lib/utils";
-
-// Adicionar uma nova interface para o resumo da posição
-export interface PositionSummary extends Trade {
-  initialQuantity: number;
-  openQuantity: number;
-  totalRealizedProfit: number;
-  status: "Open" | "Closed";
-  tradesInPosition: Trade[];
-}
-
-// Function to group and summarize positions
-const summarizePositions = (trades: Trade[]): PositionSummary[] => {
-  const positions = new Map<number, Trade[]>();
-
-  // 1. Group trades by position_id
-  trades.forEach((trade) => {
-    const positionId = trade.position_id!;
-    if (!positions.has(positionId)) {
-      positions.set(positionId, []);
-    }
-    positions.get(positionId)!.push(trade);
-  });
-
-  const summaries: PositionSummary[] = [];
-
-  // 2. Create summaries for each position
-  positions.forEach((tradesInPosition, positionId) => {
-    const initialTrade = tradesInPosition.sort(
-      (a, b) =>
-        new Date(a.entry_date).getTime() - new Date(b.entry_date).getTime()
-    )[0];
-
-    // Find all partial exit trades and sum their quantities.
-    const exitTrades = tradesInPosition.filter((t) => !!t.exit_date);
-    const totalExitQuantity = exitTrades.reduce(
-      (acc, t) => acc + t.quantity,
-      0
-    );
-
-    // Find the main trade record. Its quantity represents the current open quantity.
-    const mainOpenTrade = tradesInPosition.find(
-      (t) => !t.exit_date && !t.observations?.startsWith("Increment to trade")
-    );
-    const openQuantity = mainOpenTrade ? mainOpenTrade.quantity : 0;
-
-    // The status is determined simply by whether there's an open quantity.
-    const status: "Open" | "Closed" = openQuantity > 0 ? "Open" : "Closed";
-
-    // Reconstruct the total entry quantity for display purposes.
-    const totalEntryQuantity = openQuantity + totalExitQuantity;
-
-    const totalRealizedProfit = exitTrades.reduce(
-      (acc, t) => acc + (t.result || 0),
-      0
-    );
-
-    summaries.push({
-      ...initialTrade,
-      id: positionId,
-      initialQuantity: totalEntryQuantity,
-      openQuantity: openQuantity,
-      totalRealizedProfit,
-      status: status,
-      tradesInPosition,
-    });
-  });
-
-  // Sort to show open positions first, then the newest
-  return summaries.sort((a, b) => {
-    if (a.status === "Open" && b.status !== "Open") return -1;
-    if (a.status !== "Open" && b.status === "Open") return 1;
-    return new Date(b.entry_date).getTime() - new Date(a.entry_date).getTime();
-  });
-};
+import { useDashboard } from "../hooks/useDashboard";
+import { PositionSummary } from "../lib/tradeUtils";
 
 const DashboardPage: React.FC = () => {
   const { logout } = useAuth();
-  const [positions, setPositions] = useState<PositionSummary[]>([]);
-  const [isTradeModalOpen, setIsTradeModalOpen] = useState(false);
-  const [currentTrade, setCurrentTrade] = useState<Trade | null>(null);
-  const [selectedPosition, setSelectedPosition] =
-    useState<PositionSummary | null>(null);
-  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
-  const [startInEditMode, setStartInEditMode] = useState(false);
-  const [isPartialExitModalOpen, setIsPartialExitModalOpen] = useState(false);
-  const [tradeForPartialExit, setTradeForPartialExit] = useState<Trade | null>(
-    null
-  );
-  const [initialCapital, setInitialCapital] = useState<number>(0);
-  const [isEditingCapital, setIsEditingCapital] = useState<boolean>(false);
-  const [tempCapital, setTempCapital] = useState<string>("0");
-  const [isIncrementModalOpen, setIsIncrementModalOpen] = useState(false);
-  const [tradeForIncrement, setTradeForIncrement] = useState<Trade | null>(
-    null
-  );
-  
-  // Filter states with localStorage initialization
-  const [statusFilter, setStatusFilter] = useState<"all" | "Open" | "Closed">(
-    () => {
-      return (localStorage.getItem('filter_status') as 'all' | 'Open' | 'Closed' | null) || 'all';
-    }
-  );
-  const [tickerSearch, setTickerSearch] = useState(() => {
-    return localStorage.getItem('filter_ticker') || '';
-  });
-  const [resultFilter, setResultFilter] = useState<'all' | 'profit' | 'loss'>(() => {
-    return (localStorage.getItem('filter_result') as 'all' | 'profit' | 'loss' | null) || 'all';
-  });
-
-  useEffect(() => {
-    loadTrades();
-    const savedCapital = localStorage.getItem("initialCapital");
-    if (savedCapital) {
-      const capitalValue = parseFloat(savedCapital);
-      if (!isNaN(capitalValue)) {
-        setInitialCapital(capitalValue);
-        setTempCapital(savedCapital);
-      }
-    }
-  }, []);
-
-  // Effect to save filters to cache
-  useEffect(() => {
-    localStorage.setItem('filter_status', statusFilter);
-    localStorage.setItem('filter_ticker', tickerSearch);
-    localStorage.setItem('filter_result', resultFilter);
-  }, [statusFilter, tickerSearch, resultFilter]);
-
-  const loadTrades = async () => {
-    try {
-      const response = await getTrades();
-      const summarized = summarizePositions(response.data);
-      setPositions(summarized);
-    } catch (error) {
-      console.error("Erro ao carregar trades:", error);
-    }
-  };
-
-  const handleAddTrade = async (tradeData: Trade) => {
-    try {
-      let result = 0;
-      if (tradeData.entry_price && tradeData.exit_price && tradeData.quantity) {
-        const entry = tradeData.entry_price;
-        const exit = tradeData.exit_price;
-        const quantity = tradeData.quantity;
-
-        if (tradeData.type === "Buy") {
-          result = (exit - entry) * quantity;
-        } else {
-          result = (entry - exit) * quantity;
-        }
-      }
-
-      const tradeWithResult = {
-        ...tradeData,
-        result,
-      };
-
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      await addTrade(tradeWithResult);
-      setIsTradeModalOpen(false);
-      loadTrades();
-    } catch (error) {
-      console.error("Erro ao adicionar trade:", error);
-      throw error;
-    }
-  };
-
-  const handleUpdateTrade = async (tradeId: number, tradeData: Trade) => {
-    try {
-      let result = 0;
-      if (tradeData.entry_price && tradeData.exit_price && tradeData.quantity) {
-        const entry = tradeData.entry_price;
-        const exit = tradeData.exit_price;
-        const quantity = tradeData.quantity;
-
-        if (tradeData.type === "Buy") {
-          result = (exit - entry) * quantity;
-        } else {
-          result = (entry - exit) * quantity;
-        }
-      }
-
-      const tradeWithResult = {
-        ...tradeData,
-        result,
-      };
-
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      await updateTrade(tradeId, tradeWithResult);
-
-      // Recarrega os trades e atualiza a posição selecionada
-      const response = await getTrades();
-      const newPositions = summarizePositions(response.data);
-      setPositions(newPositions);
-
-      if (selectedPosition) {
-        const updatedSelectedPosition = newPositions.find(
-          (p) => p.id === selectedPosition.id
-        );
-        setSelectedPosition(updatedSelectedPosition || null);
-      }
-    } catch (error) {
-      console.error("Erro ao atualizar trade:", error);
-      throw error;
-    }
-  };
-
-  const handleDeleteTrade = async (tradeId: number) => {
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      await deleteTrade(tradeId);
-      setIsDetailsModalOpen(false);
-      loadTrades(); // Recarregar a lista de trades
-    } catch (error) {
-      console.error("Erro ao excluir trade:", error);
-      throw error;
-    }
-  };
+  const {
+    positions,
+    filteredPositions,
+    isTradeModalOpen,
+    setIsTradeModalOpen,
+    currentTrade,
+    setCurrentTrade,
+    selectedPosition,
+    setSelectedPosition,
+    isDetailsModalOpen,
+    setIsDetailsModalOpen,
+    startInEditMode,
+    setStartInEditMode,
+    isPartialExitModalOpen,
+    setIsPartialExitModalOpen,
+    tradeForPartialExit,
+    setTradeForPartialExit,
+    initialCapital,
+    isEditingCapital,
+    setIsEditingCapital,
+    tempCapital,
+    setTempCapital,
+    isIncrementModalOpen,
+    setIsIncrementModalOpen,
+    tradeForIncrement,
+    setTradeForIncrement,
+    statusFilter,
+    setStatusFilter,
+    tickerSearch,
+    setTickerSearch,
+    resultFilter,
+    setResultFilter,
+    handleAddTrade,
+    handleUpdateTrade,
+    handleDeleteTrade,
+    handlePartialExitSubmit,
+    handleIncrementSubmit,
+    handleSaveCapital,
+    handleClearFilters,
+    isFilterActive,
+  } = useDashboard();
 
   const handleTradeClick = (position: PositionSummary) => {
     setSelectedPosition(position);
@@ -262,78 +82,7 @@ const DashboardPage: React.FC = () => {
     setTradeForIncrement(trade);
     setIsIncrementModalOpen(true);
   };
-
-  const handlePartialExitSubmit = async (exitData: {
-    exit_quantity: number;
-    exit_price: number;
-    exit_date: string;
-  }) => {
-    if (!tradeForPartialExit) return;
-    try {
-      await executePartialExit(tradeForPartialExit.id!, exitData);
-      setIsPartialExitModalOpen(false);
-
-      // Re-fetch all trades and update the currently selected position for the modal
-      const response = await getTrades();
-      const newPositions = summarizePositions(response.data);
-      setPositions(newPositions);
-
-      if (selectedPosition) {
-        const updatedSelectedPosition = newPositions.find(
-          (p) => p.id === selectedPosition.id
-        );
-        setSelectedPosition(updatedSelectedPosition || null);
-      }
-
-      setTradeForPartialExit(null);
-    } catch (error) {
-      console.error("Failed to execute partial exit", error);
-    }
-  };
-
-  const handleIncrementSubmit = async (incrementData: {
-    increment_quantity: number;
-    increment_price: number;
-    increment_date: string;
-  }) => {
-    if (!tradeForIncrement) return;
-    try {
-      await incrementPosition(tradeForIncrement.id!, incrementData);
-      setIsIncrementModalOpen(false);
-
-      // Re-fetch all trades and update the currently selected position for the modal
-      const response = await getTrades();
-      const newPositions = summarizePositions(response.data);
-      setPositions(newPositions);
-
-      if (selectedPosition) {
-        const updatedSelectedPosition = newPositions.find(
-          (p) => p.id === selectedPosition.id
-        );
-        setSelectedPosition(updatedSelectedPosition || null);
-      }
-
-      setTradeForIncrement(null);
-    } catch (error) {
-      console.error("Failed to increment position", error);
-    }
-  };
-
-  const handleSaveCapital = () => {
-    const newCapital = parseFloat(tempCapital);
-    if (!isNaN(newCapital)) {
-      setInitialCapital(newCapital);
-      localStorage.setItem("initialCapital", tempCapital);
-      setIsEditingCapital(false);
-    }
-  };
-
-  const handleClearFilters = () => {
-    setStatusFilter("all");
-    setTickerSearch("");
-    setResultFilter("all");
-  };
-
+  
   const closedTrades = positions.filter((p) => p.status === "Closed");
 
   const totalProfit = closedTrades.reduce(
@@ -349,40 +98,6 @@ const DashboardPage: React.FC = () => {
           totalTrades) *
         100
       : 0;
-
-  const isFilterActive =
-    statusFilter !== "all" || tickerSearch !== "" || resultFilter !== "all";
-
-  const filteredPositions = useMemo(() => {
-    return positions.filter((position) => {
-      // Status filter
-      if (statusFilter !== "all" && position.status !== statusFilter) {
-        return false;
-      }
-
-      // Ticker search filter
-      if (
-        tickerSearch &&
-        !position.ticker.toLowerCase().includes(tickerSearch.toLowerCase())
-      ) {
-        return false;
-      }
-
-      // Result filter
-      if (resultFilter !== "all") {
-        if (position.status === "Open") return false; // Hide open positions if filtering by result
-
-        if (resultFilter === "profit" && position.totalRealizedProfit <= 0) {
-          return false;
-        }
-        if (resultFilter === "loss" && position.totalRealizedProfit > 0) {
-          return false;
-        }
-      }
-
-      return true;
-    });
-  }, [positions, statusFilter, tickerSearch, resultFilter]);
 
   return (
     <div className="flex flex-col min-h-screen">

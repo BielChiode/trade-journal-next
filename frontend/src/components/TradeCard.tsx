@@ -8,7 +8,7 @@ import {
   Clock,
   CheckCircle,
 } from "lucide-react";
-import { PositionSummary } from "../pages/DashboardPage";
+import { PositionSummary } from "../lib/tradeUtils";
 
 interface TradeCardProps {
   position: PositionSummary;

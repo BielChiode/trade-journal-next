@@ -12,7 +12,7 @@ import {
   ChartData,
   ChartOptions,
 } from "chart.js";
-import { PositionSummary } from "../pages/DashboardPage";
+import { PositionSummary } from "../lib/tradeUtils";
 
 ChartJS.register(
   CategoryScale,
