@@ -276,8 +276,7 @@ const DashboardPage: React.FC = () => {
   );
   const currentCapital = initialCapital + totalProfit;
   const totalTrades = closedTrades.length;
-  const averageProfitPerTrade =
-    totalTrades > 0 ? totalProfit / totalTrades : 0;
+  const averageProfitPerTrade = totalTrades > 0 ? totalProfit / totalTrades : 0;
   const winRate =
     totalTrades > 0
       ? (closedTrades.filter((t) => (t.totalRealizedProfit ?? 0) > 0).length /

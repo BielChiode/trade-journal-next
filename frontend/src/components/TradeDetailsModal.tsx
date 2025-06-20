@@ -7,6 +7,8 @@ import {
   GitCommitHorizontal,
   CheckCircle,
   Clock,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import Modal from "./ui/Modal";
 import TradeForm from "./TradeForm";
@@ -230,16 +232,24 @@ const TradeDetailsModal: React.FC<TradeDetailsModalProps> = ({
                     key={t.id}
                     className="flex justify-between items-center text-sm py-1"
                   >
-                    <div>
-                      <p className="font-medium text-gray-800">
-                        Saída em{" "}
-                        {new Date(t.exit_date!).toLocaleDateString("pt-BR", {
-                          timeZone: "UTC",
-                        })}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        Qtd: {t.quantity} - R$ {t.exit_price!.toFixed(2)}
-                      </p>
+                    <div className="flex items-center gap-2">
+                      {position.type === "Buy" ? (
+                        <ArrowDown size={18} className="text-red-500" />
+                      ) : (
+                        <ArrowUp size={18} className="text-blue-500" />
+                      )}
+                      <div>
+                        <p className="font-medium text-gray-800">
+                          {position.type === "Buy" ? "Venda" : "Compra"}:{" "}
+                          {t.quantity} @ R$ {t.exit_price!.toFixed(2)}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          Saída em{" "}
+                          {new Date(t.exit_date!).toLocaleDateString("pt-BR", {
+                            timeZone: "UTC",
+                          })}
+                        </p>
+                      </div>
                     </div>
                     <p
                       className={`font-semibold ${
