@@ -6,9 +6,9 @@ import {
   Navigate,
 } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-import DashboardPage from './pages/DashboardPage';
-import LoginPage from './pages/LoginPage';
-import RegisterPage from './pages/RegisterPage';
+import DashboardPage from './pages/dashboard';
+import LoginPage from './pages/login';
+import RegisterPage from './pages/register';
 import Loader from './components/ui/Loader';
 
 // Componente para proteger rotas

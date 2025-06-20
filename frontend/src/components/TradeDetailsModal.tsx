@@ -17,8 +17,8 @@ import { Button } from "./ui/Button";
 import ConfirmationModal from "./ui/ConfirmationModal";
 import { Trade } from "../types/trade";
 import { cn } from "../lib/utils";
-import { PositionSummary } from "../pages/DashboardPage";
 import ButtonLoader from "./ui/ButtonLoader";
+import { PositionSummary } from "../lib/tradeUtils";
 
 interface TradeDetailsModalProps {
   isOpen: boolean;
@@ -129,7 +129,8 @@ const TradeDetailsModal: React.FC<TradeDetailsModalProps> = ({
     .filter((trade) => {
       const isPartialExit = !!trade.exit_date;
       const isIncrement =
-        !trade.exit_date && trade.observations?.startsWith("Increment to trade");
+        !trade.exit_date &&
+        trade.observations?.startsWith("Increment to trade");
       return isPartialExit || isIncrement;
     })
     .sort((a, b) => {
@@ -230,9 +231,8 @@ const TradeDetailsModal: React.FC<TradeDetailsModalProps> = ({
             <div className="space-y-3 rounded-md border p-3">
               <h4 className="font-semibold text-base">Histórico da Posição</h4>
               {historyEvents.map((event) => {
-                const isIncrement = event.observations?.startsWith(
-                  "Increment to trade"
-                );
+                const isIncrement =
+                  event.observations?.startsWith("Increment to trade");
 
                 if (isIncrement) {
                   return (
@@ -280,7 +280,8 @@ const TradeDetailsModal: React.FC<TradeDetailsModalProps> = ({
                             {position.type === "Buy"
                               ? "Venda Parcial"
                               : "Compra Parcial"}
-                            : {event.quantity} @ R$ {event.exit_price!.toFixed(2)}
+                            : {event.quantity} @ R${" "}
+                            {event.exit_price!.toFixed(2)}
                           </p>
                           <p className="text-xs text-gray-500">
                             Saída em{" "}
@@ -293,9 +294,7 @@ const TradeDetailsModal: React.FC<TradeDetailsModalProps> = ({
                       </div>
                       <p
                         className={`font-semibold ${
-                          event.result! >= 0
-                            ? "text-green-600"
-                            : "text-red-600"
+                          event.result! >= 0 ? "text-green-600" : "text-red-600"
                         }`}
                       >
                         {event.result! >= 0 ? "+" : ""}R${" "}
@@ -307,15 +306,17 @@ const TradeDetailsModal: React.FC<TradeDetailsModalProps> = ({
               })}
               {/* Total Realizado */}
               {closedTrades.length > 0 && (
-                  <div className="flex justify-between items-center text-sm font-bold pt-2 border-t">
-                    <span>Total Realizado</span>
-                    <span
-                      className={`${isProfit ? "text-green-600" : "text-red-600"}`}
-                    >
-                      {isProfit ? "+" : ""}R${" "}
-                      {position.totalRealizedProfit.toFixed(2)}
-                    </span>
-                  </div>
+                <div className="flex justify-between items-center text-sm font-bold pt-2 border-t">
+                  <span>Total Realizado</span>
+                  <span
+                    className={`${
+                      isProfit ? "text-green-600" : "text-red-600"
+                    }`}
+                  >
+                    {isProfit ? "+" : ""}R${" "}
+                    {position.totalRealizedProfit.toFixed(2)}
+                  </span>
+                </div>
               )}
             </div>
           )}
@@ -369,7 +370,7 @@ const TradeDetailsModal: React.FC<TradeDetailsModalProps> = ({
                   : "-"}
               </p>
             </div>
-            {position.status === 'Open' ? (
+            {position.status === "Open" ? (
               <>
                 <div>
                   <label className="text-xs sm:text-sm font-medium text-gray-600">
