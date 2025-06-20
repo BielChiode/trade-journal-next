@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { PlusCircle } from "lucide-react";
 import {
   getTrades,
   addTrade,
@@ -6,11 +7,22 @@ import {
   deleteTrade,
   executePartialExit,
   incrementPosition,
-} from "../services/tradeService";
-import { Trade } from "../types/trade";
-import { PositionSummary, summarizePositions } from "../lib/tradeUtils";
+} from "../../services/tradeService";
+import { Button } from "../../components/ui/Button";
+import Modal from "../../components/ui/Modal";
+import TradeForm from "../../components/TradeForm";
+import TradeDetailsModal from "../../components/TradeDetailsModal";
+import { Trade } from "../../types/trade";
+import PartialExitForm from "../../components/PartialExitForm";
+import { useAuth } from "../../contexts/AuthContext";
+import PositionIncrementForm from "../../components/PositionIncrementForm";
+import { PositionSummary, summarizePositions } from "../../lib/tradeUtils";
+import DashboardHeader from "./components/DashboardHeader";
+import DashboardMetrics from "./components/DashboardMetrics";
+import TradesHistory from "./components/TradesHistory";
 
-export const useDashboard = () => {
+const DashboardPage: React.FC = () => {
+  const { logout } = useAuth();
   const [positions, setPositions] = useState<PositionSummary[]>([]);
   const [isTradeModalOpen, setIsTradeModalOpen] = useState(false);
   const [currentTrade, setCurrentTrade] = useState<Trade | null>(null);
@@ -249,46 +261,127 @@ export const useDashboard = () => {
   const isFilterActive =
     statusFilter !== "all" || tickerSearch !== "" || resultFilter !== "all";
 
-  return {
-    positions,
-    filteredPositions,
-    isTradeModalOpen,
-    setIsTradeModalOpen,
-    currentTrade,
-    setCurrentTrade,
-    selectedPosition,
-    setSelectedPosition,
-    isDetailsModalOpen,
-    setIsDetailsModalOpen,
-    startInEditMode,
-    setStartInEditMode,
-    isPartialExitModalOpen,
-    setIsPartialExitModalOpen,
-    tradeForPartialExit,
-    setTradeForPartialExit,
-    initialCapital,
-    isEditingCapital,
-    setIsEditingCapital,
-    tempCapital,
-    setTempCapital,
-    isIncrementModalOpen,
-    setIsIncrementModalOpen,
-    tradeForIncrement,
-    setTradeForIncrement,
-    statusFilter,
-    setStatusFilter,
-    tickerSearch,
-    setTickerSearch,
-    resultFilter,
-    setResultFilter,
-    loadTrades,
-    handleAddTrade,
-    handleUpdateTrade,
-    handleDeleteTrade,
-    handlePartialExitSubmit,
-    handleIncrementSubmit,
-    handleSaveCapital,
-    handleClearFilters,
-    isFilterActive,
+  const handleOpenPartialExitModal = (trade: Trade) => {
+    setTradeForPartialExit(trade);
+    setIsPartialExitModalOpen(true);
   };
-}; 
+
+  const handleOpenIncrementModal = (trade: Trade) => {
+    setTradeForIncrement(trade);
+    setIsIncrementModalOpen(true);
+  };
+  
+  const closedTrades = positions.filter((p) => p.status === "Closed");
+  const totalProfit = closedTrades.reduce(
+    (acc, trade) => acc + (Number(trade.totalRealizedProfit) || 0),
+    0
+  );
+  const currentCapital = initialCapital + totalProfit;
+
+  return (
+    <div className="flex flex-col min-h-screen">
+      <DashboardHeader 
+        initialCapital={initialCapital}
+        currentCapital={currentCapital}
+        logout={logout}
+      />
+
+      {/* Main Content */}
+      <main className="flex-1 p-3 sm:p-4 md:p-6 bg-gray-50 overflow-y-auto">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-800">
+            Dashboard
+          </h2>
+          <Button onClick={() => setIsTradeModalOpen(true)}>
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Adicionar Novo Trade
+          </Button>
+        </div>
+
+        <DashboardMetrics
+            isEditingCapital={isEditingCapital}
+            setIsEditingCapital={setIsEditingCapital}
+            tempCapital={tempCapital}
+            setTempCapital={setTempCapital}
+            handleSaveCapital={handleSaveCapital}
+            initialCapital={initialCapital}
+            positions={positions}
+        />
+
+        <TradesHistory
+            setCurrentTrade={setCurrentTrade}
+            setIsTradeModalOpen={setIsTradeModalOpen}
+            isFilterActive={isFilterActive}
+            handleClearFilters={handleClearFilters}
+            tickerSearch={tickerSearch}
+            setTickerSearch={setTickerSearch}
+            statusFilter={statusFilter}
+            setStatusFilter={setStatusFilter}
+            resultFilter={resultFilter}
+            setResultFilter={setResultFilter}
+            filteredPositions={filteredPositions}
+            setSelectedPosition={setSelectedPosition}
+            setStartInEditMode={setStartInEditMode}
+            setIsDetailsModalOpen={setIsDetailsModalOpen}
+        />
+      </main>
+
+      {/* Modal para adicionar novo trade */}
+      <Modal
+        isOpen={isTradeModalOpen}
+        onClose={() => setIsTradeModalOpen(false)}
+        title={currentTrade ? "Editar Trade" : "Adicionar Trade"}
+      >
+        <TradeForm
+          onAddTrade={handleAddTrade}
+          onCancel={() => setIsTradeModalOpen(false)}
+          initialData={currentTrade}
+        />
+      </Modal>
+
+      {/* Modal para detalhes/edição do trade */}
+      {selectedPosition && (
+        <TradeDetailsModal
+          isOpen={isDetailsModalOpen}
+          onClose={() => setIsDetailsModalOpen(false)}
+          position={selectedPosition}
+          onUpdateTrade={handleUpdateTrade}
+          onDeleteTrade={handleDeleteTrade}
+          onOpenPartialExit={handleOpenPartialExitModal}
+          onOpenIncrement={handleOpenIncrementModal}
+          startInEditMode={startInEditMode}
+        />
+      )}
+
+      {tradeForPartialExit && (
+        <Modal
+          isOpen={isPartialExitModalOpen}
+          onClose={() => setIsPartialExitModalOpen(false)}
+          title={`Saída Parcial de ${tradeForPartialExit.ticker}`}
+        >
+          <PartialExitForm
+            onSubmit={handlePartialExitSubmit}
+            onCancel={() => setIsPartialExitModalOpen(false)}
+            remainingQuantity={tradeForPartialExit.quantity}
+          />
+        </Modal>
+      )}
+
+      {isIncrementModalOpen && tradeForIncrement && (
+        <Modal
+          isOpen={isIncrementModalOpen}
+          onClose={() => setIsIncrementModalOpen(false)}
+          title={`Incrementar Posição em ${tradeForIncrement.ticker}`}
+        >
+          <PositionIncrementForm
+            onSubmit={handleIncrementSubmit}
+            onCancel={() => setIsIncrementModalOpen(false)}
+            currentQuantity={tradeForIncrement.quantity}
+          />
+        </Modal>
+      )}
+    </div>
+  );
+};
+
+export default DashboardPage;

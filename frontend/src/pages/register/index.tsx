@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
-import { Button } from '../components/ui/Button';
+import { Button } from '../../components/ui/Button';
 import { Eye, EyeOff } from 'lucide-react';
 import {
     Card,
@@ -9,7 +9,7 @@ import {
     CardDescription,
     CardHeader,
     CardTitle,
-} from '../components/ui/Card';
+} from '../../components/ui/Card';
 
 const RegisterPage: React.FC = () => {
     const [email, setEmail] = useState('');
