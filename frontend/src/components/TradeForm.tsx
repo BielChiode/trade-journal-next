@@ -1,6 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Button } from "./ui/Button";
 import { Trade } from "../types/trade";
+import Calendar from "react-calendar";
+import ButtonLoader from "./ui/ButtonLoader";
+
+type ValuePiece = Date | null;
+type Value = ValuePiece | [ValuePiece, ValuePiece];
 
 interface TradeFormProps {
   onAddTrade?: (trade: Trade) => Promise<void>;
@@ -30,6 +35,11 @@ const TradeForm: React.FC<TradeFormProps> = ({
   });
 
   const [loading, setLoading] = useState(false);
+  const [showEntryCalendar, setShowEntryCalendar] = useState(false);
+  const [showExitCalendar, setShowExitCalendar] = useState(false);
+
+  const entryCalendarRef = useRef<HTMLDivElement>(null);
+  const exitCalendarRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (initialData) {
@@ -41,6 +51,28 @@ const TradeForm: React.FC<TradeFormProps> = ({
       });
     }
   }, [initialData]);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        entryCalendarRef.current &&
+        !entryCalendarRef.current.contains(event.target as Node)
+      ) {
+        setShowEntryCalendar(false);
+      }
+      if (
+        exitCalendarRef.current &&
+        !exitCalendarRef.current.contains(event.target as Node)
+      ) {
+        setShowExitCalendar(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   const handleChange = (
     e: React.ChangeEvent<
@@ -57,6 +89,27 @@ const TradeForm: React.FC<TradeFormProps> = ({
           ? parseFloat(value) || 0
           : value,
     }));
+  };
+
+  const handleDateChange = (
+    value: Value,
+    fieldName: "entry_date" | "exit_date"
+  ) => {
+    const date = Array.isArray(value) ? value[0] : value;
+
+    if (date) {
+      const formattedDate = date.toISOString().split("T")[0];
+      setTrade((prev) => ({
+        ...prev,
+        [fieldName]: formattedDate,
+      }));
+    }
+
+    if (fieldName === "entry_date") {
+      setShowEntryCalendar(false);
+    } else {
+      setShowExitCalendar(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -106,6 +159,7 @@ const TradeForm: React.FC<TradeFormProps> = ({
             placeholder="Ex: PETR4"
             className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             required
+            disabled={loading}
           />
         </div>
         <div>
@@ -117,6 +171,7 @@ const TradeForm: React.FC<TradeFormProps> = ({
             value={trade.type}
             onChange={handleChange}
             className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            disabled={loading}
           >
             <option value="Buy">Compra</option>
             <option value="Sell">Venda</option>
@@ -130,14 +185,27 @@ const TradeForm: React.FC<TradeFormProps> = ({
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Data de Entrada *
           </label>
-          <input
-            type="date"
-            name="entry_date"
-            value={trade.entry_date}
-            onChange={handleChange}
-            className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            required
-          />
+          <div className="relative">
+            <input
+              type="text"
+              name="entry_date"
+              value={trade.entry_date}
+              onFocus={() => setShowEntryCalendar(true)}
+              readOnly
+              className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer"
+              required
+              disabled={loading}
+            />
+            {showEntryCalendar && (
+              <div ref={entryCalendarRef} className="absolute z-10 mt-1">
+                <Calendar
+                  onChange={(value) => handleDateChange(value, "entry_date")}
+                  value={trade.entry_date ? new Date(trade.entry_date) : null}
+                  locale="pt-BR"
+                />
+              </div>
+            )}
+          </div>
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -152,6 +220,7 @@ const TradeForm: React.FC<TradeFormProps> = ({
             placeholder="0.00"
             className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             required
+            disabled={loading}
           />
         </div>
       </div>
@@ -162,13 +231,27 @@ const TradeForm: React.FC<TradeFormProps> = ({
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Data de Saída
           </label>
-          <input
-            type="date"
-            name="exit_date"
-            value={trade.exit_date ?? ""}
-            onChange={handleChange}
-            className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          />
+          <div className="relative">
+            <input
+              type="text"
+              name="exit_date"
+              value={trade.exit_date ?? ""}
+              onFocus={() => setShowExitCalendar(true)}
+              readOnly
+              className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer"
+              required
+              disabled={loading}
+            />
+            {showExitCalendar && (
+              <div ref={exitCalendarRef} className="absolute z-10 mt-1">
+                <Calendar
+                  onChange={(value) => handleDateChange(value, "exit_date")}
+                  value={trade.exit_date ? new Date(trade.exit_date) : null}
+                  locale="pt-BR"
+                />
+              </div>
+            )}
+          </div>
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -182,6 +265,7 @@ const TradeForm: React.FC<TradeFormProps> = ({
             onChange={handleChange}
             placeholder="0.00"
             className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            disabled={loading}
           />
         </div>
       </div>
@@ -199,6 +283,7 @@ const TradeForm: React.FC<TradeFormProps> = ({
           placeholder="100"
           className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           required
+          disabled={loading}
         />
       </div>
 
@@ -213,6 +298,7 @@ const TradeForm: React.FC<TradeFormProps> = ({
           onChange={handleChange}
           placeholder="Ex: Rompimento de resistência"
           className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          disabled={loading}
         />
       </div>
 
@@ -228,6 +314,7 @@ const TradeForm: React.FC<TradeFormProps> = ({
           placeholder="Adicione suas observações sobre o trade..."
           rows={3}
           className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+          disabled={loading}
         />
       </div>
 
@@ -238,17 +325,20 @@ const TradeForm: React.FC<TradeFormProps> = ({
           className="w-full sm:flex-1 order-2 sm:order-1"
           disabled={loading}
         >
-          {loading
-            ? "Salvando..."
-            : isEditing
-            ? "Atualizar Trade"
-            : "Salvar Trade"}
+          {loading ? (
+            <ButtonLoader text={isEditing ? "Atualizando..." : "Salvando..."} />
+          ) : isEditing ? (
+            "Atualizar Trade"
+          ) : (
+            "Salvar Trade"
+          )}
         </Button>
         <Button
           type="button"
           variant="outline"
           onClick={onCancel}
           className="w-full sm:flex-1 order-1 sm:order-2"
+          disabled={loading}
         >
           Cancelar
         </Button>

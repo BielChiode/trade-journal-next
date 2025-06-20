@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { PlusCircle, Plus } from "lucide-react";
+import { PlusCircle, Plus, Edit, LogOut } from "lucide-react";
 import {
   getTrades,
   addTrade,
   updateTrade,
   deleteTrade,
   executePartialExit,
-} from "../services/api";
+} from "../services/tradeService";
 import { Button } from "../components/ui/Button";
 import {
   Card,
@@ -21,6 +21,9 @@ import TradeForm from "../components/TradeForm";
 import TradeDetailsModal from "../components/TradeDetailsModal";
 import { Trade } from "../types/trade";
 import PartialExitForm from "../components/PartialExitForm";
+import ConfirmationModal from "../components/ui/ConfirmationModal";
+import { formatCurrency } from "../lib/utils";
+import { useAuth } from "../contexts/AuthContext";
 
 // Adicionar uma nova interface para o resumo da posição
 export interface PositionSummary extends Trade {
@@ -77,18 +80,17 @@ const summarizePositions = (trades: Trade[]): PositionSummary[] => {
   return summaries.sort((a, b) => {
     if (a.status === "Open" && b.status !== "Open") return -1;
     if (a.status !== "Open" && b.status === "Open") return 1;
-    return (
-      new Date(b.entry_date).getTime() - new Date(a.entry_date).getTime()
-    );
+    return new Date(b.entry_date).getTime() - new Date(a.entry_date).getTime();
   });
 };
 
 const DashboardPage: React.FC = () => {
+  const { logout } = useAuth();
   const [positions, setPositions] = useState<PositionSummary[]>([]);
   const [isTradeModalOpen, setIsTradeModalOpen] = useState(false);
   const [currentTrade, setCurrentTrade] = useState<Trade | null>(null);
-  const [selectedTradeForDetails, setSelectedTradeForDetails] =
-    useState<Trade | null>(null);
+  const [selectedPosition, setSelectedPosition] =
+    useState<PositionSummary | null>(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [tradeToDelete, setTradeToDelete] = useState<Trade | null>(null);
   const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
@@ -97,9 +99,20 @@ const DashboardPage: React.FC = () => {
   const [tradeForPartialExit, setTradeForPartialExit] = useState<Trade | null>(
     null
   );
+  const [initialCapital, setInitialCapital] = useState<number>(0);
+  const [isEditingCapital, setIsEditingCapital] = useState<boolean>(false);
+  const [tempCapital, setTempCapital] = useState<string>("0");
 
   useEffect(() => {
     loadTrades();
+    const savedCapital = localStorage.getItem("initialCapital");
+    if (savedCapital) {
+      const capitalValue = parseFloat(savedCapital);
+      if (!isNaN(capitalValue)) {
+        setInitialCapital(capitalValue);
+        setTempCapital(savedCapital);
+      }
+    }
   }, []);
 
   const loadTrades = async () => {
@@ -115,11 +128,7 @@ const DashboardPage: React.FC = () => {
   const handleAddTrade = async (tradeData: Trade) => {
     try {
       let result = 0;
-      if (
-        tradeData.entry_price &&
-        tradeData.exit_price &&
-        tradeData.quantity
-      ) {
+      if (tradeData.entry_price && tradeData.exit_price && tradeData.quantity) {
         const entry = tradeData.entry_price;
         const exit = tradeData.exit_price;
         const quantity = tradeData.quantity;
@@ -136,6 +145,7 @@ const DashboardPage: React.FC = () => {
         result,
       };
 
+      await new Promise((resolve) => setTimeout(resolve, 1500));
       await addTrade(tradeWithResult);
       setIsTradeModalOpen(false);
       loadTrades();
@@ -148,11 +158,7 @@ const DashboardPage: React.FC = () => {
   const handleUpdateTrade = async (tradeId: number, tradeData: Trade) => {
     try {
       let result = 0;
-      if (
-        tradeData.entry_price &&
-        tradeData.exit_price &&
-        tradeData.quantity
-      ) {
+      if (tradeData.entry_price && tradeData.exit_price && tradeData.quantity) {
         const entry = tradeData.entry_price;
         const exit = tradeData.exit_price;
         const quantity = tradeData.quantity;
@@ -169,8 +175,20 @@ const DashboardPage: React.FC = () => {
         result,
       };
 
+      await new Promise((resolve) => setTimeout(resolve, 1500));
       await updateTrade(tradeId, tradeWithResult);
-      loadTrades();
+
+      // Recarrega os trades e atualiza a posição selecionada
+      const response = await getTrades();
+      const newPositions = summarizePositions(response.data);
+      setPositions(newPositions);
+
+      if (selectedPosition) {
+        const updatedSelectedPosition = newPositions.find(
+          (p) => p.id === selectedPosition.id
+        );
+        setSelectedPosition(updatedSelectedPosition || null);
+      }
     } catch (error) {
       console.error("Erro ao atualizar trade:", error);
       throw error;
@@ -179,6 +197,7 @@ const DashboardPage: React.FC = () => {
 
   const handleDeleteTrade = async (tradeId: number) => {
     try {
+      await new Promise((resolve) => setTimeout(resolve, 1500));
       await deleteTrade(tradeId);
       setIsDetailsModalOpen(false);
       loadTrades(); // Recarregar a lista de trades
@@ -189,24 +208,25 @@ const DashboardPage: React.FC = () => {
   };
 
   const handleTradeClick = (position: PositionSummary) => {
-    const representativeTrade = position.tradesInPosition.sort(
-      (a, b) =>
-        new Date(a.entry_date).getTime() - new Date(b.entry_date).getTime()
-    )[0];
-    setSelectedTradeForDetails(representativeTrade);
+    setSelectedPosition(position);
     setStartInEditMode(false);
     setIsDetailsModalOpen(true);
   };
 
   const handleAddExitPrice = (trade: Trade) => {
-    setSelectedTradeForDetails(trade);
-    setStartInEditMode(true);
-    setIsDetailsModalOpen(true);
+    // Encontra a posição correspondente ao trade
+    const position = positions.find((p) =>
+      p.tradesInPosition.some((t) => t.id === trade.id)
+    );
+    if (position) {
+      setSelectedPosition(position);
+      setStartInEditMode(true);
+      setIsDetailsModalOpen(true);
+    }
   };
 
   const handleOpenPartialExitModal = (trade: Trade) => {
     setTradeForPartialExit(trade);
-    setIsDetailsModalOpen(false); // Fecha o modal de detalhes
     setIsPartialExitModalOpen(true);
   };
 
@@ -217,13 +237,34 @@ const DashboardPage: React.FC = () => {
   }) => {
     if (!tradeForPartialExit) return;
     try {
+      await new Promise((resolve) => setTimeout(resolve, 1500));
       await executePartialExit(tradeForPartialExit.id!, exitData);
       setIsPartialExitModalOpen(false);
       setTradeForPartialExit(null);
-      loadTrades(); // Recarrega todos os trades
+
+      // Recarrega os trades e atualiza a posição selecionada
+      const response = await getTrades();
+      const newPositions = summarizePositions(response.data);
+      setPositions(newPositions);
+
+      if (selectedPosition) {
+        const updatedSelectedPosition = newPositions.find(
+          (p) => p.id === selectedPosition.id
+        );
+        setSelectedPosition(updatedSelectedPosition || null);
+      }
     } catch (error) {
       console.error("Erro ao executar saída parcial:", error);
       // Adicionar feedback para o usuário aqui, se desejar
+    }
+  };
+
+  const handleSaveCapital = () => {
+    const newCapital = parseFloat(tempCapital);
+    if (!isNaN(newCapital)) {
+      setInitialCapital(newCapital);
+      localStorage.setItem("initialCapital", tempCapital);
+      setIsEditingCapital(false);
     }
   };
 
@@ -233,7 +274,10 @@ const DashboardPage: React.FC = () => {
     (acc, trade) => acc + (Number(trade.totalRealizedProfit) || 0),
     0
   );
+  const currentCapital = initialCapital + totalProfit;
   const totalTrades = closedTrades.length;
+  const averageProfitPerTrade =
+    totalTrades > 0 ? totalProfit / totalTrades : 0;
   const winRate =
     totalTrades > 0
       ? (closedTrades.filter((t) => (t.totalRealizedProfit ?? 0) > 0).length /
@@ -248,67 +292,138 @@ const DashboardPage: React.FC = () => {
         <h1 className="text-base sm:text-lg font-semibold truncate">
           Trade Journal
         </h1>
-        <Button
-          onClick={() => setIsTradeModalOpen(true)}
-          size="sm"
-          className="sm:size-default"
-        >
-          <PlusCircle className="w-4 h-4 sm:mr-2" />
-          <span className="hidden sm:inline">Novo Trade</span>
-          <span className="sm:hidden">Novo</span>
-        </Button>
+
+        <div className="flex items-center gap-6">
+          <div className="hidden md:flex items-center gap-6">
+            <div className="text-sm text-right">
+              <span className="text-muted-foreground">Capital Inicial: </span>
+              <span className="font-semibold">
+                {formatCurrency(initialCapital)}
+              </span>
+            </div>
+            <div className="text-sm text-right">
+              <span className="text-muted-foreground">Capital Atual: </span>
+              <span className="font-semibold">
+                {formatCurrency(currentCapital)}
+              </span>
+            </div>
+          </div>
+          <Button variant="ghost" size="icon" onClick={logout} title="Sair">
+            <LogOut size={16} />
+          </Button>
+        </div>
       </header>
 
-      <main className="flex-1 overflow-auto p-3 sm:p-4 md:p-6 lg:p-8">
-        {/* Cards de estatísticas responsivos */}
-        <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 mb-6 sm:mb-8">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-              <CardTitle className="text-xs sm:text-sm font-medium">
-                Lucro Total
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div
-                className={`text-lg sm:text-2xl font-bold ${
-                  totalProfit >= 0 ? "text-green-500" : "text-red-500"
-                }`}
-              >
-                R$ {totalProfit.toFixed(2)}
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-              <CardTitle className="text-xs sm:text-sm font-medium">
-                Taxa de Acerto
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-lg sm:text-2xl font-bold">
-                {winRate.toFixed(1)}%
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="sm:col-span-2 lg:col-span-1">
-            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-              <CardTitle className="text-xs sm:text-sm font-medium">
-                Total de Trades
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-lg sm:text-2xl font-bold">{totalTrades}</div>
-            </CardContent>
-          </Card>
+      {/* Main Content */}
+      <main className="flex-1 p-3 sm:p-4 md:p-6 bg-gray-50 overflow-y-auto">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-800">
+            Dashboard
+          </h2>
+          <Button onClick={() => setIsTradeModalOpen(true)}>
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Adicionar Novo Trade
+          </Button>
+        </div>
+
+        {/* Métricas e Gráfico */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 mb-6">
+          <div className="lg:col-span-1 space-y-4 sm:space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex justify-between items-center">
+                  <span>Capital Inicial</span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setIsEditingCapital(!isEditingCapital)}
+                    className="h-8 w-8"
+                  >
+                    {isEditingCapital ? (
+                      <span className="text-xs">Cancelar</span>
+                    ) : (
+                      <Edit size={14} />
+                    )}
+                  </Button>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {isEditingCapital ? (
+                  <div className="flex gap-2 items-center">
+                    <input
+                      type="number"
+                      value={tempCapital}
+                      onChange={(e) => setTempCapital(e.target.value)}
+                      placeholder="0.00"
+                      className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                    <Button onClick={handleSaveCapital}>Salvar</Button>
+                  </div>
+                ) : (
+                  <p className="text-2xl font-bold">
+                    {formatCurrency(initialCapital)}
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle>Métricas Gerais</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">
+                    Resultado Total:
+                  </span>
+                  <span
+                    className={`font-bold text-lg ${
+                      totalProfit >= 0 ? "text-green-600" : "text-red-600"
+                    }`}
+                  >
+                    {formatCurrency(totalProfit)}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">
+                    Lucro médio por trade:
+                  </span>
+                  <span
+                    className={`font-medium ${
+                      averageProfitPerTrade >= 0
+                        ? "text-green-600"
+                        : "text-red-600"
+                    }`}
+                  >
+                    {formatCurrency(averageProfitPerTrade)}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">
+                    Total de Trades:
+                  </span>
+                  <span className="font-medium">{totalTrades}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Taxa de Acerto:</span>
+                  <span className="font-medium">{winRate.toFixed(1)}%</span>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+          <div className="lg:col-span-2">
+            <Card>
+              <CardHeader>
+                <CardTitle>Gráfico de Lucro Cumulativo</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <CumulativeProfitChart trades={positions} />
+              </CardContent>
+            </Card>
+          </div>
         </div>
 
         {/* Layout principal responsivo */}
-        <div className="grid gap-6 sm:gap-8 grid-cols-1 xl:grid-cols-2">
-          {/* Gráfico */}
-          <div className="order-2 xl:order-1">
-            <CumulativeProfitChart trades={positions} />
-          </div>
-
+        <div className="grid gap-6 sm:gap-8 grid-cols-1 xl:grid-cols-2 mb-6">
           {/* Histórico de trades */}
           <div className="order-1 xl:order-2">
             <div className="flex items-center gap-3 mb-3 sm:mb-4">
@@ -356,20 +471,21 @@ const DashboardPage: React.FC = () => {
       <Modal
         isOpen={isTradeModalOpen}
         onClose={() => setIsTradeModalOpen(false)}
-        title="Adicionar Novo Trade"
+        title={currentTrade ? "Editar Trade" : "Adicionar Trade"}
       >
         <TradeForm
           onAddTrade={handleAddTrade}
           onCancel={() => setIsTradeModalOpen(false)}
+          initialData={currentTrade}
         />
       </Modal>
 
       {/* Modal para detalhes/edição do trade */}
-      {selectedTradeForDetails && (
+      {selectedPosition && (
         <TradeDetailsModal
           isOpen={isDetailsModalOpen}
           onClose={() => setIsDetailsModalOpen(false)}
-          trade={selectedTradeForDetails}
+          position={selectedPosition}
           onUpdateTrade={handleUpdateTrade}
           onDeleteTrade={handleDeleteTrade}
           onOpenPartialExit={handleOpenPartialExitModal}
@@ -389,6 +505,19 @@ const DashboardPage: React.FC = () => {
             remainingQuantity={tradeForPartialExit.quantity}
           />
         </Modal>
+      )}
+
+      {tradeToDelete && (
+        <ConfirmationModal
+          isOpen={isConfirmationModalOpen}
+          onClose={() => setIsConfirmationModalOpen(false)}
+          onConfirm={() => {
+            handleDeleteTrade(tradeToDelete.id!);
+            setTradeToDelete(null);
+          }}
+          title="Confirmar Exclusão"
+          message="Tem certeza de que deseja excluir este trade?"
+        />
       )}
     </div>
   );
