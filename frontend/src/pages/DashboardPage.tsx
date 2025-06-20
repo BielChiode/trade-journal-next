@@ -294,14 +294,14 @@ const DashboardPage: React.FC = () => {
         </h1>
 
         <div className="flex items-center gap-6">
-          <div className="hidden md:flex items-center gap-6">
-            <div className="text-sm text-right">
+          <div className="flex flex-col items-end text-xs md:flex-row md:items-center md:gap-4 md:text-sm">
+            <div className="text-right">
               <span className="text-muted-foreground">Capital Inicial: </span>
               <span className="font-semibold">
                 {formatCurrency(initialCapital)}
               </span>
             </div>
-            <div className="text-sm text-right">
+            <div className="text-right">
               <span className="text-muted-foreground">Capital Atual: </span>
               <span className="font-semibold">
                 {formatCurrency(currentCapital)}
@@ -422,46 +422,43 @@ const DashboardPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Layout principal responsivo */}
-        <div className="grid gap-6 sm:gap-8 grid-cols-1 xl:grid-cols-2 mb-6">
-          {/* Histórico de trades */}
-          <div className="order-1 xl:order-2">
-            <div className="flex items-center gap-3 mb-3 sm:mb-4">
-              <h2 className="text-xl sm:text-2xl font-bold">
-                Histórico de Trades
-              </h2>
-              <Button
-                variant="outline"
-                size="icon"
-                className="rounded-full"
-                title="Novo Trade"
-                onClick={() => {
-                  setCurrentTrade(null);
-                  setIsTradeModalOpen(true);
-                }}
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
-            </div>
-            <div className="max-h-[520px] sm:max-h-[580px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-              <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
-                {positions.length > 0 ? (
-                  positions.map((position) => (
-                    <TradeCard
-                      key={position.id}
-                      position={position}
-                      onClick={() => handleTradeClick(position)}
-                    />
-                  ))
-                ) : (
-                  <div className="col-span-full text-center py-8 text-gray-500">
-                    <p>Nenhum trade encontrado.</p>
-                    <p className="text-sm mt-1">
-                      Clique em "Novo Trade" para começar.
-                    </p>
-                  </div>
-                )}
-              </div>
+        {/* Histórico de trades */}
+        <div className="mt-6">
+          <div className="flex items-center gap-3 mb-3 sm:mb-4">
+            <h2 className="text-xl sm:text-2xl font-bold">
+              Histórico de Trades
+            </h2>
+            <Button
+              variant="outline"
+              size="icon"
+              className="rounded-full"
+              title="Novo Trade"
+              onClick={() => {
+                setCurrentTrade(null);
+                setIsTradeModalOpen(true);
+              }}
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+          </div>
+          <div className="max-h-[520px] sm:max-h-[580px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+            <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+              {positions.length > 0 ? (
+                positions.map((position) => (
+                  <TradeCard
+                    key={position.id}
+                    position={position}
+                    onClick={() => handleTradeClick(position)}
+                  />
+                ))
+              ) : (
+                <div className="col-span-full text-center py-8 text-gray-500">
+                  <p>Nenhum trade encontrado.</p>
+                  <p className="text-sm mt-1">
+                    Clique em "Novo Trade" para começar.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>

@@ -144,6 +144,9 @@ const TradeDetailsModal: React.FC<TradeDetailsModalProps> = ({
     lastExitDate = latestTrade.exit_date || null;
   }
 
+  const isPartiallyEditable =
+    position.status === "Closed" || position.tradesInPosition.length > 1;
+
   if (isEditing && tradeToEdit) {
     return (
       <Modal isOpen={isOpen} onClose={onClose} title="Editar Trade">
@@ -152,6 +155,7 @@ const TradeDetailsModal: React.FC<TradeDetailsModalProps> = ({
           onCancel={handleCancelEdit}
           initialData={tradeToEdit}
           isEditing={true}
+          isPartiallyEditable={isPartiallyEditable}
         />
       </Modal>
     );

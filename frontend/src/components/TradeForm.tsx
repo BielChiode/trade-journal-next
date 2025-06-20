@@ -13,6 +13,7 @@ interface TradeFormProps {
   onCancel: () => void;
   initialData?: Trade | null;
   isEditing?: boolean;
+  isPartiallyEditable?: boolean;
 }
 
 const TradeForm: React.FC<TradeFormProps> = ({
@@ -21,6 +22,7 @@ const TradeForm: React.FC<TradeFormProps> = ({
   onCancel,
   initialData = null,
   isEditing = false,
+  isPartiallyEditable = false,
 }) => {
   const [trade, setTrade] = useState<Trade>({
     ticker: "",
@@ -159,7 +161,7 @@ const TradeForm: React.FC<TradeFormProps> = ({
             placeholder="Ex: PETR4"
             className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             required
-            disabled={loading}
+            disabled={loading || isPartiallyEditable}
           />
         </div>
         <div>
@@ -171,7 +173,7 @@ const TradeForm: React.FC<TradeFormProps> = ({
             value={trade.type}
             onChange={handleChange}
             className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            disabled={loading}
+            disabled={loading || isPartiallyEditable}
           >
             <option value="Buy">Compra</option>
             <option value="Sell">Venda</option>
@@ -194,7 +196,7 @@ const TradeForm: React.FC<TradeFormProps> = ({
               readOnly
               className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer"
               required
-              disabled={loading}
+              disabled={loading || isPartiallyEditable}
             />
             {showEntryCalendar && (
               <div ref={entryCalendarRef} className="absolute z-10 mt-1">
@@ -220,7 +222,7 @@ const TradeForm: React.FC<TradeFormProps> = ({
             placeholder="0.00"
             className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             required
-            disabled={loading}
+            disabled={loading || isPartiallyEditable}
           />
         </div>
       </div>
@@ -240,7 +242,7 @@ const TradeForm: React.FC<TradeFormProps> = ({
               readOnly
               className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer"
               required
-              disabled={loading}
+              disabled={loading || isPartiallyEditable}
             />
             {showExitCalendar && (
               <div ref={exitCalendarRef} className="absolute z-10 mt-1">
@@ -265,7 +267,7 @@ const TradeForm: React.FC<TradeFormProps> = ({
             onChange={handleChange}
             placeholder="0.00"
             className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            disabled={loading}
+            disabled={loading || isPartiallyEditable}
           />
         </div>
       </div>
@@ -280,10 +282,10 @@ const TradeForm: React.FC<TradeFormProps> = ({
           name="quantity"
           value={trade.quantity}
           onChange={handleChange}
-          placeholder="100"
+          placeholder="0"
           className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           required
-          disabled={loading}
+          disabled={loading || isPartiallyEditable}
         />
       </div>
 
@@ -311,7 +313,6 @@ const TradeForm: React.FC<TradeFormProps> = ({
           name="observations"
           value={trade.observations ?? ""}
           onChange={handleChange}
-          placeholder="Adicione suas observações sobre o trade..."
           rows={3}
           className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
           disabled={loading}

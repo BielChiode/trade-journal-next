@@ -22,7 +22,49 @@ const TradeCard: React.FC<TradeCardProps> = ({ position, onClick }) => {
     if (value === null || value === undefined) return "N/A";
     return `R$ ${Number(value).toFixed(2)}`;
   };
-  console.log(position);
+
+  const closedTrades = position.tradesInPosition.filter(
+    (t) => t.exit_price != null && t.exit_price > 0
+  );
+  let averageExitPrice = 0;
+  if (closedTrades.length > 0) {
+    const totalExitValue = closedTrades.reduce(
+      (acc, t) => acc + t.exit_price! * t.quantity,
+      0
+    );
+    const totalExitedQuantity = closedTrades.reduce(
+      (acc, t) => acc + t.quantity,
+      0
+    );
+    if (totalExitedQuantity > 0) {
+      averageExitPrice = totalExitValue / totalExitedQuantity;
+    }
+  }
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString("pt-BR", {
+      timeZone: "UTC",
+    });
+  };
+
+  let displayDate = "";
+  if (position.status === "Open") {
+    displayDate = formatDate(position.entry_date);
+  } else {
+    const closedTradesWithDate = position.tradesInPosition.filter(
+      (t) => t.exit_date
+    );
+    if (closedTradesWithDate.length > 0) {
+      const lastExitDate = closedTradesWithDate.sort(
+        (a, b) =>
+          new Date(b.exit_date!).getTime() - new Date(a.exit_date!).getTime()
+      )[0].exit_date;
+      if (lastExitDate) {
+        displayDate = formatDate(lastExitDate);
+      }
+    }
+  }
+
   return (
     <Card
       className="cursor-pointer hover:shadow-lg transition-shadow duration-200 active:scale-[0.98] flex flex-col"
@@ -87,24 +129,48 @@ const TradeCard: React.FC<TradeCardProps> = ({ position, onClick }) => {
               <span className="font-medium">{position.openQuantity}</span>
             </div>
           )}
+          <div className="flex justify-between items-center text-xs sm:text-sm">
+            <span className="text-muted-foreground">Preço de Entrada:</span>
+            <span className="font-medium">
+              {formatCurrency(position.entry_price)}
+            </span>
+          </div>
+          {position.status === "Closed" && (
+            <div className="flex justify-between items-center text-xs sm:text-sm">
+              <span className="text-muted-foreground">
+                {closedTrades.length > 1
+                  ? "Preço Médio Saída:"
+                  : "Preço de Saída:"}
+              </span>
+              <span className="font-medium">
+                {formatCurrency(averageExitPrice)}
+              </span>
+            </div>
+          )}
         </CardContent>
       </div>
 
       <div className="px-4 pb-3 pt-2 border-t">
         <div
           className={cn(
-            "flex items-center gap-2 ",
+            "flex items-center justify-between",
             position.status === "Open"
               ? "text-blue-600 text-sm"
               : "text-gray-500 text-xs"
           )}
         >
-          {position.status === "Open" ? (
-            <Clock size={12} />
-          ) : (
-            <CheckCircle size={12} />
-          )}
-          <span>Posição {position.status.toLowerCase() === "open" ? "Aberta" : "Fechada"}</span>
+          <div className="flex items-center gap-2">
+            {position.status === "Open" ? (
+              <Clock size={12} />
+            ) : (
+              <CheckCircle size={12} />
+            )}
+            <span>
+              Posição{" "}
+              {position.status.toLowerCase() === "open" ? "Aberta" : "Fechada"}
+            </span>
+          </div>
+          <span className="text-xs">{displayDate}</span>
         </div>
       </div>
     </Card>
