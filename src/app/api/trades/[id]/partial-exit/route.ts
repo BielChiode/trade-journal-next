@@ -2,11 +2,12 @@ import TradeModel from "@/models/trade";
 import { Trade } from "@/types/trade";
 import { NextRequest, NextResponse } from "next/server";
 import db from "@/lib/db/database";
+import { getUserIdFromRequest } from "@/lib/auth";
 
 // Helper to run DB operations as promises
-const findTradeById = (tradeId: number): Promise<Trade> => {
+const findTradeById = (tradeId: number, userId: number): Promise<Trade> => {
   return new Promise((resolve, reject) => {
-    TradeModel.findById(tradeId, (err, trade) => {
+    TradeModel.findById(tradeId, userId, (err, trade) => {
       if (err) return reject(err);
       if (!trade) return reject(new Error("Trade not found"));
       resolve(trade);
@@ -23,18 +24,22 @@ const createTrade = (trade: Trade, userId: number): Promise<any> => {
   });
 };
 
-const updateTrade = (tradeId: number, data: Partial<Trade>): Promise<void> => {
+const updateTrade = (
+  tradeId: number,
+  data: Partial<Trade>,
+  userId: number
+): Promise<void> => {
   return new Promise((resolve, reject) => {
-    TradeModel.update(tradeId, data, (err) => {
+    TradeModel.update(tradeId, data, userId, (err) => {
       if (err) return reject(err);
       resolve();
     });
   });
 };
 
-const deleteTrade = (tradeId: number): Promise<void> => {
+const deleteTrade = (tradeId: number, userId: number): Promise<void> => {
   return new Promise((resolve, reject) => {
-    TradeModel.delete(tradeId, (err) => {
+    TradeModel.delete(tradeId, userId, (err) => {
       if (err) return reject(err);
       resolve();
     });
@@ -42,13 +47,17 @@ const deleteTrade = (tradeId: number): Promise<void> => {
 };
 
 // Mock user ID - you'll replace this with actual auth logic
-const FAKE_USER_ID = 1;
+// const FAKE_USER_ID = 1;
 
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    const userId = getUserIdFromRequest(request);
+    if (!userId) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
     const tradeId = parseInt(params.id, 10);
     const { exit_quantity, exit_price, exit_date } = await request.json();
 
@@ -59,7 +68,7 @@ export async function POST(
       );
     }
 
-    const originalTrade = await findTradeById(tradeId);
+    const originalTrade = await findTradeById(tradeId, userId);
 
     if (exit_quantity > originalTrade.quantity) {
       return NextResponse.json(
@@ -91,19 +100,19 @@ export async function POST(
       setup: originalTrade.setup,
     };
 
-    await createTrade(partialTradeToCreate as Trade, FAKE_USER_ID);
+    await createTrade(partialTradeToCreate as Trade, userId);
 
     const new_quantity = originalTrade.quantity - exit_quantity;
 
     if (new_quantity > 0) {
       // Update the original trade with the remaining quantity
-      await updateTrade(tradeId, { quantity: new_quantity });
+      await updateTrade(tradeId, { quantity: new_quantity }, userId);
       return NextResponse.json({
         message: "Partial exit executed successfully.",
       });
     } else {
       // If no quantity remains, delete the original trade
-      await deleteTrade(tradeId);
+      await deleteTrade(tradeId, userId);
       return NextResponse.json({
         message: "Trade completely closed with partial exit.",
       });

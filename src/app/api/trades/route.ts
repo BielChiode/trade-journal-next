@@ -1,13 +1,16 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import TradeModel from "@/models/trade";
 import { Trade } from "@/types/trade";
+import { getUserIdFromRequest } from "@/lib/auth";
 
-// Mock user ID - you'll replace this with actual auth logic
-const FAKE_USER_ID = 1;
+export async function GET(request: NextRequest) {
+  const userId = getUserIdFromRequest(request);
+  if (!userId) {
+    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+  }
 
-export async function GET() {
   return new Promise((resolve) => {
-    TradeModel.findAllByUser(FAKE_USER_ID, (err: Error | null, trades: Trade[]) => {
+    TradeModel.findAllByUser(userId, (err: Error | null, trades: Trade[]) => {
       if (err) {
         resolve(
           NextResponse.json(
@@ -22,11 +25,16 @@ export async function GET() {
   });
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
+  const userId = getUserIdFromRequest(request);
+  if (!userId) {
+    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+  }
+
   const newTrade: Trade = await request.json();
 
   return new Promise((resolve) => {
-    TradeModel.create(newTrade, FAKE_USER_ID, (err: Error | null, result: any) => {
+    TradeModel.create(newTrade, userId, (err: Error | null, result: any) => {
       if (err) {
         resolve(
           NextResponse.json(

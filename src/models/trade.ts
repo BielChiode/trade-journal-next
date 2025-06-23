@@ -76,24 +76,26 @@ const TradeModel = {
   update: (
     tradeId: number,
     trade: Partial<Trade>,
+    userId: number,
     callback: (err: Error | null) => void
   ) => {
     const fields = Object.keys(trade)
       .map((field) => `${field} = ?`)
       .join(", ");
     const values = Object.values(trade);
-    const query = `UPDATE trades SET ${fields} WHERE id = ?`;
-    db.run(query, [...values, tradeId], function (err) {
+    const query = `UPDATE trades SET ${fields} WHERE id = ? AND user_id = ?`;
+    db.run(query, [...values, tradeId, userId], function (err) {
       callback(err);
     });
   },
 
   delete: (
     tradeId: number,
+    userId: number,
     callback: (err: Error | null, result?: { changes: number }) => void
   ) => {
-    const query = "DELETE FROM trades WHERE id = ?";
-    db.run(query, [tradeId], function (err) {
+    const query = "DELETE FROM trades WHERE id = ? AND user_id = ?";
+    db.run(query, [tradeId, userId], function (err) {
       if (err) {
         return callback(err);
       }
@@ -103,10 +105,11 @@ const TradeModel = {
 
   deleteByPositionId: (
     positionId: number,
+    userId: number,
     callback: (err: Error | null, result?: { changes: number }) => void
   ) => {
-    const query = "DELETE FROM trades WHERE position_id = ?";
-    db.run(query, [positionId], function (err) {
+    const query = "DELETE FROM trades WHERE position_id = ? AND user_id = ?";
+    db.run(query, [positionId, userId], function (err) {
       if (err) {
         return callback(err);
       }
@@ -114,9 +117,13 @@ const TradeModel = {
     });
   },
 
-  findById: (tradeId: number, callback: (err: Error | null, trade: Trade | null) => void) => {
-    const query = 'SELECT * FROM trades WHERE id = ?';
-    db.get(query, [tradeId], (err, row: Trade) => {
+  findById: (
+    tradeId: number,
+    userId: number,
+    callback: (err: Error | null, trade: Trade | null) => void
+  ) => {
+    const query = "SELECT * FROM trades WHERE id = ? AND user_id = ?";
+    db.get(query, [tradeId, userId], (err, row: Trade) => {
       callback(err, row);
     });
   },

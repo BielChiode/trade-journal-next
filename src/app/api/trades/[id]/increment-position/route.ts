@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import TradeModel from "@/models/trade";
+import { getUserIdFromRequest } from "@/lib/auth";
 
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    const userId = getUserIdFromRequest(request);
+    if (!userId) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
+
     const tradeId = parseInt(params.id, 10);
     const { increment_quantity, increment_price, increment_date } =
       await request.json();
@@ -56,7 +62,7 @@ export async function POST(
     };
 
     await new Promise<void>((resolve, reject) => {
-      TradeModel.update(tradeId, updatedTradeData, (err) => {
+      TradeModel.update(tradeId, updatedTradeData, userId, (err) => {
         if (err) return reject(err);
         resolve();
       });
@@ -73,7 +79,6 @@ export async function POST(
       observations: `Increment to trade #${tradeId}`,
       status: "Open", // The log itself doesn't close
     };
-    const userId = 1; // FIXME: Get real user ID
     await new Promise<void>((resolve, reject) => {
       TradeModel.create(incrementLogTrade, userId, (err: any) => {
         if (err) return reject(err);

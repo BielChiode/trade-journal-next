@@ -14,6 +14,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/Card";
+import { Input } from "@/components/ui/Input";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
 const LoginPage: React.FC = () => {
   const [email, setEmail] = useState("");
@@ -47,7 +49,10 @@ const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-100">
+    <div className="flex items-center justify-center min-h-screen bg-background">
+      <div className="absolute top-4 right-4">
+        <ThemeToggle />
+      </div>
       <Card className="w-full max-w-sm">
         <CardHeader>
           <CardTitle className="text-2xl">Login</CardTitle>
@@ -60,42 +65,45 @@ const LoginPage: React.FC = () => {
             <div className="space-y-2">
               <label
                 htmlFor="email"
-                className="block text-sm font-medium text-gray-700"
+                className="block text-sm font-medium text-muted-foreground"
               >
                 Email
               </label>
-              <input
+              <Input
                 id="email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="seu@email.com"
                 required
               />
             </div>
             <div className="space-y-2">
               <label
                 htmlFor="password"
-                className="block text-sm font-medium text-gray-700"
+                className="block text-sm font-medium text-muted-foreground"
               >
                 Senha
               </label>
               <div className="relative">
-                <input
+                <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="********"
                   required
+                  className="pr-10"
                 />
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
+                  size="icon"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 px-3 flex items-center text-gray-500"
+                  className="absolute inset-y-0 right-0 h-full px-3 flex items-center text-muted-foreground"
                 >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
+                </Button>
               </div>
             </div>
             {error && <p className="text-sm text-red-600">{error}</p>}
@@ -103,9 +111,9 @@ const LoginPage: React.FC = () => {
               {isLoading ? <ButtonLoader text="Entrando..."/> : "Entrar"}
             </Button>
           </form>
-          <p className="mt-4 text-center text-sm">
+          <p className="mt-4 text-center text-sm text-muted-foreground">
             Não tem uma conta?{" "}
-            <Link href="/register" className="text-blue-600 hover:underline">
+            <Link href="/register" className="text-primary hover:underline">
               Registre-se
             </Link>
           </p>
