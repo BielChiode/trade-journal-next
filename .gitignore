@@ -11,8 +11,9 @@
 
 
 # Build artifacts
-/backend/dist
-/frontend/build
+.next/
+.swc/
+out/
 
 # Database
 trades.db

@@ -1,19 +1,51 @@
 {
-  "name": "trade-journal",
-  "version": "1.0.0",
-  "description": "Sistema de registro de trades com backend em Node.js e frontend em React.",
-  "main": "index.js",
+  "name": "trade-journal-next",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
   "scripts": {
-    "install:backend": "cd backend && npm install",
-    "install:frontend": "cd frontend && npm install",
-    "postinstall": "npm run install:backend && npm run install:frontend",
-    "dev": "concurrently \"npm run dev --prefix backend\" \"npm run dev --prefix frontend\"",
-    "start": "npm run start --prefix backend"
+    "dev": "next dev --turbopack",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "dependencies": {
+    "@radix-ui/react-dialog": "^1.1.14",
+    "@radix-ui/react-label": "^2.1.7",
+    "@radix-ui/react-slot": "^1.2.3",
+    "axios": "^1.10.0",
+    "bcryptjs": "^3.0.2",
+    "chart.js": "^4.5.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "jsonwebtoken": "^9.0.2",
+    "jwt-decode": "^4.0.0",
+    "lucide-react": "^0.522.0",
+    "next": "15.3.4",
+    "next-themes": "^0.4.6",
+    "react": "^19.0.0",
+    "react-calendar": "^6.0.0",
+    "react-chartjs-2": "^5.3.0",
+    "react-dom": "^19.0.0",
+    "sqlite3": "^5.1.7",
+    "tailwind-merge": "^3.3.1",
+    "tailwindcss-animate": "^1.0.7"
+  },
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "@eslint/eslintrc": "^3",
+    "@tailwindcss/postcss": "^4.1.10",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-calendar": "^3.9.0",
+    "@types/react-dom": "^19",
+    "@types/sqlite3": "^3.1.11",
+    "autoprefixer": "^10.4.21",
+    "eslint": "^9",
+    "eslint-config-next": "15.3.4",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.10",
+    "typescript": "^5"
   }
-} 
+}
