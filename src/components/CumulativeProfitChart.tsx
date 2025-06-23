@@ -16,7 +16,6 @@ import {
   ChartOptions,
 } from "chart.js";
 import { PositionSummary } from "@/lib/tradeUtils";
-import { Trade } from "@/types/trade";
 
 ChartJS.register(
   CategoryScale,
@@ -30,14 +29,10 @@ ChartJS.register(
 
 interface CumulativeProfitChartProps {
   positions: PositionSummary[];
-  trades: Trade[];
-  initialCapital: number;
 }
 
 const CumulativeProfitChart: React.FC<CumulativeProfitChartProps> = ({
   positions,
-  trades,
-  initialCapital,
 }) => {
   const { theme } = useTheme();
   const [fontSize, setFontSize] = React.useState(14);

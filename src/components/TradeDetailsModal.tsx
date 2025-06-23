@@ -171,8 +171,8 @@ const TradeDetailsModal: React.FC<TradeDetailsModalProps> = ({
               <div
                 className={`flex items-center gap-2 px-3 py-1 rounded-full self-start sm:self-auto ${
                   isProfit
-                    ? "bg-green-100 text-green-700"
-                    : "bg-red-100 text-red-700"
+                    ? "bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400"
+                    : "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400"
                 }`}
               >
                 {isProfit ? (
@@ -190,7 +190,9 @@ const TradeDetailsModal: React.FC<TradeDetailsModalProps> = ({
             <div
               className={cn(
                 "flex items-center gap-2 text-sm",
-                position.status === "Open" ? "text-blue-600" : "text-gray-500"
+                position.status === "Open"
+                  ? "text-blue-600 dark:text-blue-400"
+                  : "text-gray-500 dark:text-gray-400"
               )}
             >
               {position.status === "Open" ? (
@@ -224,11 +226,11 @@ const TradeDetailsModal: React.FC<TradeDetailsModalProps> = ({
                           <ArrowDown size={18} className="text-green-500" />
                         )}
                         <div>
-                          <p className="font-medium text-gray-800">
+                          <p className="font-medium text-gray-800 dark:text-gray-200">
                             Incremento: {event.quantity} @ R${" "}
                             {event.entry_price.toFixed(2)}
                           </p>
-                          <p className="text-xs text-gray-500">
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
                             Em{" "}
                             {new Date(event.entry_date).toLocaleDateString(
                               "pt-BR",
@@ -253,14 +255,14 @@ const TradeDetailsModal: React.FC<TradeDetailsModalProps> = ({
                           <ArrowUp size={18} className="text-blue-500" />
                         )}
                         <div>
-                          <p className="font-medium text-gray-800">
+                          <p className="font-medium text-gray-800 dark:text-gray-200">
                             {position.type === "Buy"
                               ? "Venda Parcial"
                               : "Compra Parcial"}
                             : {event.quantity} @ R${" "}
                             {event.exit_price!.toFixed(2)}
                           </p>
-                          <p className="text-xs text-gray-500">
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
                             Saída em{" "}
                             {new Date(event.exit_date!).toLocaleDateString(
                               "pt-BR",
@@ -271,7 +273,9 @@ const TradeDetailsModal: React.FC<TradeDetailsModalProps> = ({
                       </div>
                       <p
                         className={`font-semibold ${
-                          event.result! >= 0 ? "text-green-600" : "text-red-600"
+                          event.result! >= 0
+                            ? "text-green-600 dark:text-green-400"
+                            : "text-red-600 dark:text-red-400"
                         }`}
                       >
                         {event.result! >= 0 ? "+" : ""}R${" "}
@@ -287,7 +291,9 @@ const TradeDetailsModal: React.FC<TradeDetailsModalProps> = ({
                   <span>Total Realizado</span>
                   <span
                     className={`${
-                      isProfit ? "text-green-600" : "text-red-600"
+                      isProfit
+                        ? "text-green-600 dark:text-green-400"
+                        : "text-red-600 dark:text-red-400"
                     }`}
                   >
                     {isProfit ? "+" : ""}R${" "}
@@ -301,7 +307,7 @@ const TradeDetailsModal: React.FC<TradeDetailsModalProps> = ({
           {/* Informações básicas */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div>
-              <label className="text-xs sm:text-sm font-medium text-gray-600">
+              <label className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400">
                 Tipo
               </label>
               <div className="mt-1">
@@ -309,8 +315,8 @@ const TradeDetailsModal: React.FC<TradeDetailsModalProps> = ({
                   className={cn(
                     "px-2.5 py-0.5 text-sm font-semibold rounded-full",
                     position.type === "Buy"
-                      ? "bg-blue-100 text-blue-800"
-                      : "bg-red-100 text-red-800"
+                      ? "bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300"
+                      : "bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300"
                   )}
                 >
                   {position.type === "Buy" ? "Compra" : "Venda"}
@@ -318,7 +324,7 @@ const TradeDetailsModal: React.FC<TradeDetailsModalProps> = ({
               </div>
             </div>
             <div>
-              <label className="text-xs sm:text-sm font-medium text-gray-600">
+              <label className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400">
                 Data de Entrada
               </label>
               <p className="mt-1 text-sm sm:text-base font-medium">
@@ -328,7 +334,7 @@ const TradeDetailsModal: React.FC<TradeDetailsModalProps> = ({
               </p>
             </div>
             <div>
-              <label className="text-xs sm:text-sm font-medium text-gray-600">
+              <label className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400">
                 Preço de Entrada
               </label>
               <p className="mt-1 text-sm sm:text-base font-medium">
@@ -336,7 +342,7 @@ const TradeDetailsModal: React.FC<TradeDetailsModalProps> = ({
               </p>
             </div>
             <div>
-              <label className="text-xs sm:text-sm font-medium text-gray-600">
+              <label className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400">
                 {closedTrades.length > 1
                   ? "Preço Médio de Saída"
                   : "Preço de Saída"}
@@ -350,7 +356,7 @@ const TradeDetailsModal: React.FC<TradeDetailsModalProps> = ({
             {position.status === "Open" ? (
               <>
                 <div>
-                  <label className="text-xs sm:text-sm font-medium text-gray-600">
+                  <label className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400">
                     Quantidade Inicial
                   </label>
                   <p className="mt-1 text-sm sm:text-base font-medium">
@@ -358,7 +364,7 @@ const TradeDetailsModal: React.FC<TradeDetailsModalProps> = ({
                   </p>
                 </div>
                 <div>
-                  <label className="text-xs sm:text-sm font-medium text-gray-600">
+                  <label className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400">
                     Quantidade em Aberto
                   </label>
                   <p className="mt-1 text-sm sm:text-base font-medium">
@@ -368,7 +374,7 @@ const TradeDetailsModal: React.FC<TradeDetailsModalProps> = ({
               </>
             ) : (
               <div>
-                <label className="text-xs sm:text-sm font-medium text-gray-600">
+                <label className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400">
                   Quantidade Total
                 </label>
                 <p className="mt-1 text-sm sm:text-base font-medium">
@@ -378,7 +384,7 @@ const TradeDetailsModal: React.FC<TradeDetailsModalProps> = ({
             )}
 
             <div>
-              <label className="text-xs sm:text-sm font-medium text-gray-600">
+              <label className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400">
                 Data de Saída
               </label>
               <p className="mt-1 text-sm sm:text-base font-medium">
@@ -396,7 +402,7 @@ const TradeDetailsModal: React.FC<TradeDetailsModalProps> = ({
             <div className="space-y-3">
               {position.setup && (
                 <div>
-                  <label className="text-xs sm:text-sm font-medium text-gray-600">
+                  <label className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400">
                     Setup
                   </label>
                   <p className="mt-1 text-sm sm:text-base">{position.setup}</p>
@@ -404,7 +410,7 @@ const TradeDetailsModal: React.FC<TradeDetailsModalProps> = ({
               )}
               {position.observations && (
                 <div>
-                  <label className="text-xs sm:text-sm font-medium text-gray-600">
+                  <label className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400">
                     Observações
                   </label>
                   <p className="mt-1 text-sm sm:text-base whitespace-pre-wrap">

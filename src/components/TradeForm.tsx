@@ -3,6 +3,7 @@ import { Button } from "./ui/Button";
 import { Trade } from "../types/trade";
 import Calendar from "react-calendar";
 import ButtonLoader from "@/components/ui/ButtonLoader";
+import { Input } from "./ui/Input";
 
 type ValuePiece = Date | null;
 type Value = ValuePiece | [ValuePiece, ValuePiece];
@@ -149,28 +150,28 @@ const TradeForm: React.FC<TradeFormProps> = ({
       {/* Ticker and Type */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-muted-foreground mb-1">
             Ticker *
           </label>
-          <input
+          <Input
             name="ticker"
             value={trade.ticker}
             onChange={handleChange}
             placeholder="Ex: PETR4"
-            className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            className="text-base sm:text-sm"
             required
             disabled={loading || isPartiallyEditable}
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-muted-foreground mb-1">
             Tipo *
           </label>
           <select
             name="type"
             value={trade.type}
             onChange={handleChange}
-            className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-base sm:text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             disabled={loading || isPartiallyEditable}
           >
             <option value="Buy">Compra</option>
@@ -182,17 +183,17 @@ const TradeForm: React.FC<TradeFormProps> = ({
       {/* Entry Date and Price */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-muted-foreground mb-1">
             Data de Entrada *
           </label>
           <div className="relative">
-            <input
+            <Input
               type="text"
               name="entry_date"
               value={trade.entry_date}
               onFocus={() => setShowEntryCalendar(true)}
               readOnly
-              className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer"
+              className="cursor-pointer text-base sm:text-sm"
               required
               disabled={loading || isPartiallyEditable}
             />
@@ -208,17 +209,17 @@ const TradeForm: React.FC<TradeFormProps> = ({
           </div>
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-muted-foreground mb-1">
             Preço de Entrada *
           </label>
-          <input
+          <Input
             type="number"
             step="0.01"
             name="entry_price"
             value={trade.entry_price}
             onChange={handleChange}
             placeholder="0.00"
-            className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            className="text-base sm:text-sm"
             required
             disabled={loading || isPartiallyEditable}
           />
@@ -228,18 +229,17 @@ const TradeForm: React.FC<TradeFormProps> = ({
       {/* Exit Date and Price */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-muted-foreground mb-1">
             Data de Saída
           </label>
           <div className="relative">
-            <input
+            <Input
               type="text"
               name="exit_date"
               value={trade.exit_date ?? ""}
               onFocus={() => setShowExitCalendar(true)}
               readOnly
-              className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer"
-              required
+              className="cursor-pointer text-base sm:text-sm"
               disabled={loading || isPartiallyEditable}
             />
             {showExitCalendar && (
@@ -254,17 +254,17 @@ const TradeForm: React.FC<TradeFormProps> = ({
           </div>
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-muted-foreground mb-1">
             Preço de Saída
           </label>
-          <input
+          <Input
             type="number"
             step="0.01"
             name="exit_price"
             value={trade.exit_price ?? 0}
             onChange={handleChange}
             placeholder="0.00"
-            className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            className="text-base sm:text-sm"
             disabled={loading || isPartiallyEditable}
           />
         </div>
@@ -272,16 +272,16 @@ const TradeForm: React.FC<TradeFormProps> = ({
 
       {/* Quantity */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="block text-sm font-medium text-muted-foreground mb-1">
           Quantidade *
         </label>
-        <input
+        <Input
           type="number"
           name="quantity"
           value={trade.quantity}
           onChange={handleChange}
           placeholder="0"
-          className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          className="text-base sm:text-sm"
           required
           disabled={loading || isPartiallyEditable}
         />
@@ -289,22 +289,22 @@ const TradeForm: React.FC<TradeFormProps> = ({
 
       {/* Setup */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="block text-sm font-medium text-muted-foreground mb-1">
           Setup
         </label>
-        <input
+        <Input
           name="setup"
           value={trade.setup ?? ""}
           onChange={handleChange}
           placeholder="Ex: Rompimento de resistência"
-          className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          className="text-base sm:text-sm"
           disabled={loading}
         />
       </div>
 
       {/* Observations */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="block text-sm font-medium text-muted-foreground mb-1">
           Observações
         </label>
         <textarea
@@ -312,7 +312,7 @@ const TradeForm: React.FC<TradeFormProps> = ({
           value={trade.observations ?? ""}
           onChange={handleChange}
           rows={3}
-          className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+          className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-base sm:text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
           disabled={loading}
         />
       </div>
