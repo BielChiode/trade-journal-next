@@ -14,17 +14,17 @@ import {
 import Modal from "./ui/Modal";
 import TradeForm from "./TradeForm";
 import { Button } from "./ui/Button";
-import { Trade } from "../types/trade";
 import { cn } from "@/lib/utils";
 import { PositionSummary } from "@/lib/tradeUtils";
+import { Trade } from "@prisma/client";
 
 interface TradeDetailsModalProps {
   isOpen: boolean;
   onClose: () => void;
   position: PositionSummary | null;
   onUpdateTrade: (id: number, trade: Trade) => Promise<void>;
-  onOpenPartialExit: (trade: Trade) => void;
-  onOpenIncrement: (trade: Trade) => void;
+  onOpenPartialExit: (position: PositionSummary) => void;
+  onOpenIncrement: (position: PositionSummary) => void;
   onDeleteClick: () => void;
   startInEditMode?: boolean;
 }
@@ -47,7 +47,7 @@ const TradeDetailsModal: React.FC<TradeDetailsModalProps> = ({
       // Se startInEditMode for true, edita o trade de entrada
       const initialTrade = position?.tradesInPosition.sort(
         (a, b) =>
-          new Date(a.entry_date).getTime() - new Date(b.entry_date).getTime()
+          new Date(a.entryDate).getTime() - new Date(b.entryDate).getTime()
       )[0];
       setTradeToEdit(initialTrade || null);
       setIsEditing(startInEditMode);
@@ -64,7 +64,7 @@ const TradeDetailsModal: React.FC<TradeDetailsModalProps> = ({
   const handleEdit = () => {
     const initialTrade = position.tradesInPosition.sort(
       (a, b) =>
-        new Date(a.entry_date).getTime() - new Date(b.entry_date).getTime()
+        new Date(a.entryDate).getTime() - new Date(b.entryDate).getTime()
     )[0];
     setTradeToEdit(initialTrade);
     setIsEditing(true);
@@ -80,9 +80,9 @@ const TradeDetailsModal: React.FC<TradeDetailsModalProps> = ({
   };
 
   const handleUpdateTrade = async (tradeData: Trade) => {
-    if (!tradeToEdit) return;
+    if (!tradeToEdit || !tradeToEdit.id) return;
     try {
-      await onUpdateTrade(tradeToEdit.id!, tradeData);
+      await onUpdateTrade(tradeToEdit.id, tradeData);
       setIsEditing(false);
       setTradeToEdit(null);
       if (startInEditMode) {
@@ -95,40 +95,36 @@ const TradeDetailsModal: React.FC<TradeDetailsModalProps> = ({
   };
 
   const hasIncrements = position.tradesInPosition.some((t) =>
-    t.observations?.startsWith("Increment to trade")
+    t.observations?.startsWith("Increment to position")
   );
 
   const isProfit = position.totalRealizedProfit >= 0;
 
-  // Encontra o trade principal que ainda está aberto na posição
-  const openTrade = position.tradesInPosition.find(
-    (t) => !t.exit_date && !t.observations?.startsWith("Increment to trade")
-  );
-
   // Filtra os eventos de histórico (parciais e incrementos)
   const historyEvents = position.tradesInPosition
     .filter((trade) => {
-      const isPartialExit = !!trade.exit_date;
-      const isIncrement =
-        !trade.exit_date &&
-        trade.observations?.startsWith("Increment to trade");
+      // Saídas parciais são trades com data E preço de saída.
+      const isPartialExit = !!trade.exitDate && trade.exitPrice !== null;
+      const isIncrement = trade.observations?.startsWith(
+        "Increment to position"
+      );
       return isPartialExit || isIncrement;
     })
     .sort((a, b) => {
-      const dateA = new Date(a.exit_date || a.entry_date).getTime();
-      const dateB = new Date(b.exit_date || b.entry_date).getTime();
+      const dateA = new Date(a.exitDate || a.entryDate).getTime();
+      const dateB = new Date(b.exitDate || b.entryDate).getTime();
       return dateA - dateB;
     });
 
   const closedTrades = position.tradesInPosition.filter(
-    (t) => t.exit_price != null && t.exit_price > 0
+    (t) => t.exitPrice != null && t.exitPrice > 0
   );
   let averageExitPrice = 0;
-  let lastExitDate: string | null = null;
+  let lastExitDate: Date | null = null;
 
   if (closedTrades.length > 0) {
     const totalExitValue = closedTrades.reduce(
-      (acc, t) => acc + t.exit_price! * t.quantity,
+      (acc, t) => acc + t.exitPrice! * t.quantity,
       0
     );
     const totalExitedQuantity = closedTrades.reduce(
@@ -142,9 +138,9 @@ const TradeDetailsModal: React.FC<TradeDetailsModalProps> = ({
 
     const latestTrade = closedTrades.sort(
       (a, b) =>
-        new Date(b.exit_date!).getTime() - new Date(a.exit_date!).getTime()
+        new Date(b.exitDate!).getTime() - new Date(a.exitDate!).getTime()
     )[0];
-    lastExitDate = latestTrade.exit_date || null;
+    lastExitDate = latestTrade.exitDate || null;
   }
 
   const isPartiallyEditable =
@@ -232,11 +228,11 @@ const TradeDetailsModal: React.FC<TradeDetailsModalProps> = ({
                         <div>
                           <p className="font-medium text-foreground">
                             Incremento: {event.quantity} @ R${" "}
-                            {event.entry_price.toFixed(2)}
+                            {event.entryPrice.toFixed(2)}
                           </p>
                           <p className="text-xs text-gray-500 dark:text-gray-400">
                             Em{" "}
-                            {new Date(event.entry_date).toLocaleDateString(
+                            {new Date(event.entryDate).toLocaleDateString(
                               "pt-BR",
                               { timeZone: "UTC" }
                             )}
@@ -264,11 +260,11 @@ const TradeDetailsModal: React.FC<TradeDetailsModalProps> = ({
                               ? "Venda Parcial"
                               : "Compra Parcial"}
                             : {event.quantity} @ R${" "}
-                            {event.exit_price!.toFixed(2)}
+                            {event.exitPrice?.toFixed(2) ?? "0.00"}
                           </p>
                           <p className="text-xs text-gray-500 dark:text-gray-400">
                             Saída em{" "}
-                            {new Date(event.exit_date!).toLocaleDateString(
+                            {new Date(event.exitDate!).toLocaleDateString(
                               "pt-BR",
                               { timeZone: "UTC" }
                             )}
@@ -277,13 +273,13 @@ const TradeDetailsModal: React.FC<TradeDetailsModalProps> = ({
                       </div>
                       <p
                         className={`font-semibold ${
-                          event.result! >= 0
+                          (event.result ?? 0) >= 0
                             ? "text-green-600 dark:text-green-400"
                             : "text-red-600 dark:text-red-400"
                         }`}
                       >
-                        {event.result! >= 0 ? "+" : ""}R${" "}
-                        {event.result!.toFixed(2)}
+                        {(event.result ?? 0) >= 0 ? "+" : ""}R${" "}
+                        {(event.result ?? 0).toFixed(2)}
                       </p>
                     </div>
                   );
@@ -332,7 +328,7 @@ const TradeDetailsModal: React.FC<TradeDetailsModalProps> = ({
                 Data de Entrada
               </label>
               <p className="mt-1 text-sm sm:text-base font-medium">
-                {new Date(position.entry_date).toLocaleDateString("pt-BR", {
+                {new Date(position.entryDate).toLocaleDateString("pt-BR", {
                   timeZone: "UTC",
                 })}
               </p>
@@ -342,7 +338,7 @@ const TradeDetailsModal: React.FC<TradeDetailsModalProps> = ({
                 {hasIncrements ? "Preço Médio de Entrada" : "Preço de Entrada"}
               </label>
               <p className="mt-1 text-sm sm:text-base font-medium">
-                R$ {position.entry_price.toFixed(2)}
+                R$ {position.entryPrice.toFixed(2)}
               </p>
             </div>
             <div>
@@ -427,18 +423,18 @@ const TradeDetailsModal: React.FC<TradeDetailsModalProps> = ({
         </div>
         {/* Botões de Ação */}
         <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-6 pt-4 border-t">
-          {openTrade && (
+          {position.status === 'Open' && (
             <div className="flex flex-col sm:flex-row sm:items-center gap-3">
               <Button
                 variant="outline"
-                onClick={() => onOpenPartialExit(openTrade)}
+                onClick={() => onOpenPartialExit(position)}
                 className="w-full"
               >
                 <TrendingDown className="mr-2 h-4 w-4" /> Saída Parcial
               </Button>
               <Button
                 variant="outline"
-                onClick={() => onOpenIncrement(openTrade)}
+                onClick={() => onOpenIncrement(position)}
                 className="w-full"
               >
                 <PlusCircle className="mr-2 h-4 w-4" /> Incrementar Posição

@@ -1,50 +1,73 @@
 import { NextRequest, NextResponse } from "next/server";
-import TradeModel from "@/models/trade";
-import { Trade } from "@/types/trade";
+import prisma from "@/lib/db/prisma";
 import { getUserIdFromRequest } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
-  const userId = getUserIdFromRequest(request);
-  if (!userId) {
-    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-  }
+  try {
+    const userId = getUserIdFromRequest(request);
+    if (!userId) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
 
-  return new Promise((resolve) => {
-    TradeModel.findAllByUser(userId, (err: Error | null, trades: Trade[]) => {
-      if (err) {
-        resolve(
-          NextResponse.json(
-            { error: err.message },
-            { status: 500 }
-          )
-        );
-      } else {
-        resolve(NextResponse.json(trades));
-      }
+    const trades = await prisma.trade.findMany({
+      where: { userId },
+      orderBy: { entryDate: "desc" },
     });
-  });
+
+    return NextResponse.json(trades);
+  } catch (error) {
+    return NextResponse.json(
+      { message: "Internal server error" },
+      { status: 500 }
+    );
+  }
 }
 
 export async function POST(request: NextRequest) {
-  const userId = getUserIdFromRequest(request);
-  if (!userId) {
-    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-  }
+  try {
+    const userId = getUserIdFromRequest(request);
+    if (!userId) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
 
-  const newTrade: Trade = await request.json();
+    const body = await request.json();
+    const {
+      ticker,
+      type,
+      entryDate,
+      entryPrice,
+      quantity,
+      setup,
+      observations,
+    } = body;
 
-  return new Promise((resolve) => {
-    TradeModel.create(newTrade, userId, (err: Error | null, result: any) => {
-      if (err) {
-        resolve(
-          NextResponse.json(
-            { error: err.message },
-            { status: 500 }
-          )
-        );
-      } else {
-        resolve(NextResponse.json(result, { status: 201 }));
-      }
+    if (!ticker || !type || !entryDate || !entryPrice || !quantity) {
+      return NextResponse.json({ message: "Missing required fields" }, { status: 400 });
+    }
+
+    // Create a placeholder trade first
+    const newTrade = await prisma.trade.create({
+      data: {
+        ticker,
+        type,
+        entryDate: new Date(entryDate),
+        entryPrice,
+        quantity,
+        setup,
+        observations,
+        userId,
+        positionId: -1, // Temporary placeholder
+      },
     });
-  });
+
+    // Now, update the trade to set its positionId to its own id
+    const finalTrade = await prisma.trade.update({
+      where: { id: newTrade.id },
+      data: { positionId: newTrade.id },
+    });
+
+    return NextResponse.json(finalTrade, { status: 201 });
+  } catch (error: any) {
+    return NextResponse.json({ message: error.message }, { status: 500 });
+  }
 } 

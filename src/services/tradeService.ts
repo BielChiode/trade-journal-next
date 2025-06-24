@@ -1,5 +1,5 @@
 import apiClient from "./apiClient";
-import { Trade } from "../types/trade";
+import { Trade } from "@prisma/client";
 
 export const getTrades = () => apiClient.get<Trade[]>("/trades");
 
@@ -17,7 +17,7 @@ export const getTradesByPositionId = (positionId: number) =>
 
 export const executePartialExit = (
   tradeId: number,
-  exitData: { exit_quantity: number; exit_price: number; exit_date: string }
+  exitData: { exitQuantity: number; exitPrice: number; exitDate: Date }
 ) => {
   return apiClient.post<{ message: string }>(
     `/trades/${tradeId}/partial-exit`,
@@ -28,9 +28,9 @@ export const executePartialExit = (
 export const incrementPosition = (
   tradeId: number,
   incrementData: {
-    increment_quantity: number;
-    increment_price: number;
-    increment_date: string;
+    incrementQuantity: number;
+    incrementPrice: number;
+    incrementDate: Date;
   }
 ) => {
   return apiClient.post(`/trades/${tradeId}/increment-position`, incrementData);

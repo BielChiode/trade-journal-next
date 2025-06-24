@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { cn } from '@/lib/utils';
 import { PositionSummary } from '@/lib/tradeUtils';
-import { Trade } from '@/types/trade';
+import { Trade } from '@prisma/client';
 import TradeCard from '@/components/TradeCard';
 
 interface TradesHistoryProps {

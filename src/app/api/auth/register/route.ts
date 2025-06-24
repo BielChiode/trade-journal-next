@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
-import db from "@/lib/db/database";
+import prisma from "@/lib/db/prisma";
+import { Prisma } from "@prisma/client";
 
 export async function POST(req: NextRequest) {
   try {
@@ -15,20 +16,12 @@ export async function POST(req: NextRequest) {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const query = "INSERT INTO users (email, password) VALUES (?, ?)";
-    const a = await new Promise((resolve, reject) => {
-        db.run(query, [email, hashedPassword], function (err) {
-            if (err) {
-              if (err.message.includes("UNIQUE constraint failed")) {
-                reject(new Error("User already exists"));
-              }
-              reject(err);
-            } else {
-              resolve(this.lastID);
-            }
-          });
-    })
-
+    await prisma.user.create({
+      data: {
+        email,
+        password: hashedPassword,
+      },
+    });
 
     return NextResponse.json(
       { message: "User created successfully" },
@@ -38,9 +31,12 @@ export async function POST(req: NextRequest) {
     let status = 500;
     let message = "Internal server error";
 
-    if (error.message === "User already exists") {
-      status = 409;
-      message = "User with this email already exists";
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      // https://www.prisma.io/docs/reference/api-reference/error-reference#p2002
+      if (error.code === "P2002") {
+        status = 409;
+        message = "User with this email already exists";
+      }
     }
 
     return NextResponse.json({ message }, { status });

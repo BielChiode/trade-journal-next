@@ -1,9 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import {
-  findTradeById,
-  updateTrade,
-  deletePosition,
-} from "@/lib/db/trade-helpers";
+import prisma from "@/lib/db/prisma";
 import { getUserIdFromRequest } from "@/lib/auth";
 
 export async function GET(
@@ -17,11 +13,21 @@ export async function GET(
     }
     const { id } = params;
     const tradeId = parseInt(id, 10);
-    const trade = await findTradeById(tradeId, userId);
+
+    const trade = await prisma.trade.findFirst({
+      where: { id: tradeId, userId },
+    });
+
+    if (!trade) {
+      return NextResponse.json({ message: "Trade not found" }, { status: 404 });
+    }
+
     return NextResponse.json(trade);
   } catch (error: any) {
-    const status = error.message === "Trade not found" ? 404 : 500;
-    return NextResponse.json({ message: error.message }, { status });
+    return NextResponse.json(
+      { message: "Internal server error" },
+      { status: 500 }
+    );
   }
 }
 
@@ -37,7 +43,39 @@ export async function PUT(
     const { id } = params;
     const tradeId = parseInt(id, 10);
     const tradeData = await request.json();
-    await updateTrade(tradeId, tradeData, userId);
+
+    // Garante que o usuário só pode atualizar seus próprios trades
+    const trade = await prisma.trade.findFirst({
+      where: { id: tradeId, userId },
+    });
+
+    if (!trade) {
+      return NextResponse.json({ message: "Trade not found" }, { status: 404 });
+    }
+
+    const {
+      ticker,
+      type,
+      entry_date,
+      entry_price,
+      quantity,
+      setup,
+      observations,
+    } = tradeData;
+
+    await prisma.trade.update({
+      where: { id: tradeId },
+      data: {
+        ticker,
+        type,
+        entryDate: new Date(entry_date),
+        entryPrice: entry_price,
+        quantity,
+        setup,
+        observations,
+      },
+    });
+
     return NextResponse.json({ message: "Trade updated successfully" });
   } catch (error: any) {
     return NextResponse.json(
@@ -58,16 +96,31 @@ export async function DELETE(
     }
     const { id } = params;
     const positionId = parseInt(id, 10);
-    await deletePosition(positionId, userId);
+
+    // Garante que o usuário só pode deletar suas próprias posições
+    const tradesInPosition = await prisma.trade.findMany({
+      where: { positionId, userId },
+    });
+
+    if (tradesInPosition.length === 0) {
+      return NextResponse.json(
+        { message: "Position not found or no trades in position" },
+        { status: 404 }
+      );
+    }
+
+    await prisma.trade.deleteMany({
+      where: {
+        positionId: positionId,
+        userId: userId,
+      },
+    });
+
     return NextResponse.json({ message: "Position deleted successfully" });
   } catch (error: any) {
-    const status =
-      error.message === "Position not found or no trades in position"
-        ? 404
-        : 500;
     return NextResponse.json(
-      { message: error.message || "Failed to delete position" },
-      { status }
+      { message: "Failed to delete position" },
+      { status: 500 }
     );
   }
 }

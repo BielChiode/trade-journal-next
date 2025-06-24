@@ -8,15 +8,15 @@ type ValuePiece = Date | null;
 type Value = ValuePiece | [ValuePiece, ValuePiece];
 
 interface PositionIncrementFormProps {
-  onSubmit: (data: { increment_quantity: number; increment_price: number; increment_date: string }) => Promise<void>;
+  onSubmit: (data: { incrementQuantity: number; incrementPrice: number; incrementDate: Date }) => Promise<void>;
   onCancel: () => void;
   currentQuantity: number;
 }
 
 const PositionIncrementForm: React.FC<PositionIncrementFormProps> = ({ onSubmit, onCancel, currentQuantity }) => {
-  const [increment_quantity, setIncrementQuantity] = useState<number | ''>('');
-  const [increment_price, setIncrementPrice] = useState<number | ''>('');
-  const [increment_date, setIncrementDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [incrementQuantity, setIncrementQuantity] = useState<number | ''>('');
+  const [incrementPrice, setIncrementPrice] = useState<number | ''>('');
+  const [incrementDate, setIncrementDate] = useState<Date>(new Date());
   const [loading, setLoading] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
   const calendarRef = useRef<HTMLDivElement>(null);
@@ -36,18 +36,18 @@ const PositionIncrementForm: React.FC<PositionIncrementFormProps> = ({ onSubmit,
   const handleDateChange = (value: Value) => {
     const date = Array.isArray(value) ? value[0] : value;
     if (date) {
-      setIncrementDate(date.toISOString().split('T')[0]);
+      setIncrementDate(date);
     }
     setShowCalendar(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!increment_quantity || !increment_price || !increment_date) {
+    if (!incrementQuantity || !incrementPrice || !incrementDate) {
       alert('Por favor, preencha todos os campos.');
       return;
     }
-    if (increment_quantity <= 0) {
+    if (incrementQuantity <= 0) {
       alert('A quantidade deve ser maior que zero.');
       return;
     }
@@ -55,9 +55,9 @@ const PositionIncrementForm: React.FC<PositionIncrementFormProps> = ({ onSubmit,
     setLoading(true);
     try {
       await onSubmit({
-        increment_quantity: Number(increment_quantity),
-        increment_price: Number(increment_price),
-        increment_date,
+        incrementQuantity: Number(incrementQuantity),
+        incrementPrice: Number(incrementPrice),
+        incrementDate,
       });
     } catch (error) {
         console.error("Error on position increment submission", error);
@@ -74,7 +74,7 @@ const PositionIncrementForm: React.FC<PositionIncrementFormProps> = ({ onSubmit,
         </label>
         <Input
           type="number"
-          value={increment_quantity}
+          value={incrementQuantity}
           onChange={(e) => setIncrementQuantity(Number(e.target.value) || '')}
           placeholder="Ex: 50"
           required
@@ -87,7 +87,7 @@ const PositionIncrementForm: React.FC<PositionIncrementFormProps> = ({ onSubmit,
           <Input
             type="number"
             step="0.01"
-            value={increment_price}
+            value={incrementPrice}
             onChange={(e) => setIncrementPrice(Number(e.target.value) || '')}
             placeholder="0.00"
             required
@@ -99,7 +99,7 @@ const PositionIncrementForm: React.FC<PositionIncrementFormProps> = ({ onSubmit,
           <div className="relative">
             <Input
               type="text"
-              value={increment_date}
+              value={incrementDate.toLocaleDateString('pt-BR')}
               onFocus={() => setShowCalendar(true)}
               readOnly
               className="cursor-pointer"
@@ -110,7 +110,7 @@ const PositionIncrementForm: React.FC<PositionIncrementFormProps> = ({ onSubmit,
               <div ref={calendarRef} className="absolute z-10 mt-1 right-0 sm:right-auto">
                 <Calendar
                   onChange={handleDateChange}
-                  value={increment_date ? new Date(increment_date) : null}
+                  value={incrementDate}
                   locale="pt-BR"
                 />
               </div>

@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import db from "@/lib/db/database";
-import { User } from "@/types/auth";
-
+import prisma from "@/lib/db/prisma";
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-default-secret";
 
@@ -18,18 +16,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const query = "SELECT * FROM users WHERE email = ?";
-
-    const user = await new Promise<User | undefined>((resolve, reject) => {
-        db.get(query, [email], (err, row: User) => {
-          if (err) {
-            reject(err);
-          } else {
-            resolve(row);
-          }
-        });
-      });
-  
+    const user = await prisma.user.findUnique({
+      where: { email },
+    });
 
     if (!user) {
       return NextResponse.json(

@@ -6,10 +6,4 @@ export interface AuthCredentials {
 export interface AuthResponse {
   message: string;
   token: string;
-}
-
-export interface User {
-  id: number;
-  email: string;
-  password: string;
 } 

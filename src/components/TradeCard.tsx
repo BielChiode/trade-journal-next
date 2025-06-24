@@ -24,12 +24,12 @@ const TradeCard: React.FC<TradeCardProps> = ({ position, onClick }) => {
   };
 
   const closedTrades = position.tradesInPosition.filter(
-    (t) => t.exit_price != null && t.exit_price > 0
+    (t) => t.exitPrice != null && t.exitPrice > 0
   );
   let averageExitPrice = 0;
   if (closedTrades.length > 0) {
     const totalExitValue = closedTrades.reduce(
-      (acc, t) => acc + t.exit_price! * t.quantity,
+      (acc, t) => acc + t.exitPrice! * t.quantity,
       0
     );
     const totalExitedQuantity = closedTrades.reduce(
@@ -41,24 +41,26 @@ const TradeCard: React.FC<TradeCardProps> = ({ position, onClick }) => {
     }
   }
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("pt-BR", {
+  const formatDate = (date: Date | string) => {
+    if (!date) return "";
+    const dateObj = typeof date === "string" ? new Date(date) : date;
+    return dateObj.toLocaleDateString("pt-BR", {
       timeZone: "UTC",
     });
   };
 
   let displayDate = "";
   if (position.status === "Open") {
-    displayDate = formatDate(position.entry_date);
+    displayDate = formatDate(position.entryDate);
   } else {
     const closedTradesWithDate = position.tradesInPosition.filter(
-      (t) => t.exit_date
+      (t) => t.exitDate
     );
     if (closedTradesWithDate.length > 0) {
       const lastExitDate = closedTradesWithDate.sort(
         (a, b) =>
-          new Date(b.exit_date!).getTime() - new Date(a.exit_date!).getTime()
-      )[0].exit_date;
+          new Date(b.exitDate!).getTime() - new Date(a.exitDate!).getTime()
+      )[0].exitDate;
       if (lastExitDate) {
         displayDate = formatDate(lastExitDate);
       }
@@ -132,7 +134,7 @@ const TradeCard: React.FC<TradeCardProps> = ({ position, onClick }) => {
           <div className="flex justify-between items-center text-xs sm:text-sm">
             <span className="text-muted-foreground">Preço de Entrada:</span>
             <span className="font-medium">
-              {formatCurrency(position.entry_price)}
+              {formatCurrency(position.entryPrice)}
             </span>
           </div>
           {position.status === "Closed" && (

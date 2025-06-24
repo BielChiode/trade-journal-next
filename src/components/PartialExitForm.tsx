@@ -8,15 +8,15 @@ type ValuePiece = Date | null;
 type Value = ValuePiece | [ValuePiece, ValuePiece];
 
 interface PartialExitFormProps {
-  onSubmit: (data: { exit_quantity: number; exit_price: number; exit_date: string }) => Promise<void>;
+  onSubmit: (data: { exitQuantity: number; exitPrice: number; exitDate: Date }) => Promise<void>;
   onCancel: () => void;
   remainingQuantity: number;
 }
 
 const PartialExitForm: React.FC<PartialExitFormProps> = ({ onSubmit, onCancel, remainingQuantity }) => {
-  const [exit_quantity, setExitQuantity] = useState<number | ''>('');
-  const [exit_price, setExitPrice] = useState<number | ''>('');
-  const [exit_date, setExitDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [exitQuantity, setExitQuantity] = useState<number | ''>('');
+  const [exitPrice, setExitPrice] = useState<number | ''>('');
+  const [exitDate, setExitDate] = useState<Date>(new Date());
   const [loading, setLoading] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
   const calendarRef = useRef<HTMLDivElement>(null);
@@ -36,22 +36,22 @@ const PartialExitForm: React.FC<PartialExitFormProps> = ({ onSubmit, onCancel, r
   const handleDateChange = (value: Value) => {
     const date = Array.isArray(value) ? value[0] : value;
     if (date) {
-      setExitDate(date.toISOString().split('T')[0]);
+      setExitDate(date);
     }
     setShowCalendar(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!exit_quantity || !exit_price || !exit_date) {
+    if (!exitQuantity || !exitPrice || !exitDate) {
       alert('Por favor, preencha todos os campos.');
       return;
     }
-    if (exit_quantity <= 0) {
+    if (exitQuantity <= 0) {
       alert('A quantidade deve ser maior que zero.');
       return;
     }
-    if (exit_quantity > remainingQuantity) {
+    if (exitQuantity > remainingQuantity) {
       alert(`A quantidade não pode ser maior que a posição atual (${remainingQuantity}).`);
       return;
     }
@@ -59,9 +59,9 @@ const PartialExitForm: React.FC<PartialExitFormProps> = ({ onSubmit, onCancel, r
     setLoading(true);
     try {
       await onSubmit({
-        exit_quantity: Number(exit_quantity),
-        exit_price: Number(exit_price),
-        exit_date,
+        exitQuantity: Number(exitQuantity),
+        exitPrice: Number(exitPrice),
+        exitDate,
       });
     } catch (error) {
         console.error("Error on partial exit submission", error);
@@ -79,7 +79,7 @@ const PartialExitForm: React.FC<PartialExitFormProps> = ({ onSubmit, onCancel, r
         </label>
         <Input
           type="number"
-          value={exit_quantity}
+          value={exitQuantity}
           onChange={(e) => setExitQuantity(Number(e.target.value) || '')}
           placeholder="Ex: 50"
           required
@@ -92,7 +92,7 @@ const PartialExitForm: React.FC<PartialExitFormProps> = ({ onSubmit, onCancel, r
           <Input
             type="number"
             step="0.01"
-            value={exit_price}
+            value={exitPrice}
             onChange={(e) => setExitPrice(Number(e.target.value) || '')}
             placeholder="0.00"
             required
@@ -104,7 +104,7 @@ const PartialExitForm: React.FC<PartialExitFormProps> = ({ onSubmit, onCancel, r
           <div className="relative">
             <Input
               type="text"
-              value={exit_date}
+              value={exitDate.toLocaleDateString('pt-BR')}
               onFocus={() => setShowCalendar(true)}
               readOnly
               className="cursor-pointer"
@@ -115,7 +115,7 @@ const PartialExitForm: React.FC<PartialExitFormProps> = ({ onSubmit, onCancel, r
               <div ref={calendarRef} className="absolute z-10 mt-1 right-0 sm:right-auto">
                 <Calendar
                   onChange={handleDateChange}
-                  value={exit_date ? new Date(exit_date) : null}
+                  value={exitDate}
                   locale="pt-BR"
                 />
               </div>

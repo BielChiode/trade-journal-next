@@ -50,13 +50,13 @@ const CumulativeProfitChart: React.FC<CumulativeProfitChartProps> = ({
     .sort((a, b) => {
       const lastExitA = Math.max(
         ...a.tradesInPosition
-          .filter((t) => t.exit_date)
-          .map((t) => new Date(t.exit_date!).getTime())
+          .filter((t) => t.exitDate)
+          .map((t) => new Date(t.exitDate!).getTime())
       );
       const lastExitB = Math.max(
         ...b.tradesInPosition
-          .filter((t) => t.exit_date)
-          .map((t) => new Date(t.exit_date!).getTime())
+          .filter((t) => t.exitDate)
+          .map((t) => new Date(t.exitDate!).getTime())
       );
       return lastExitA - lastExitB;
     });

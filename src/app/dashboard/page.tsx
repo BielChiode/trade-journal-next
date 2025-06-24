@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/Button";
 import Modal from "@/components/ui/Modal";
 import TradeForm from "@/components/TradeForm";
 import TradeDetailsModal from "@/components/TradeDetailsModal";
-import { Trade } from "@/types/trade";
+import { Trade } from "@prisma/client";
 import PartialExitForm from "@/components/PartialExitForm";
 import { useAuth } from "@/contexts/AuthContext";
 import PositionIncrementForm from "@/components/PositionIncrementForm";
@@ -155,12 +155,12 @@ const DashboardPage: React.FC = () => {
     );
   }
 
-  const handleAddTrade = async (tradeData: Trade) => {
+  const handleAddTrade = async (tradeData: Omit<Trade, 'id' | 'positionId' | 'userId' | 'result'>) => {
     try {
       let result = 0;
-      if (tradeData.entry_price && tradeData.exit_price && tradeData.quantity) {
-        const entry = tradeData.entry_price;
-        const exit = tradeData.exit_price;
+      if (tradeData.entryPrice && (tradeData as any).exitPrice && tradeData.quantity) {
+        const entry = tradeData.entryPrice;
+        const exit = (tradeData as any).exitPrice;
         const quantity = tradeData.quantity;
 
         if (tradeData.type === "Buy") {
@@ -176,7 +176,7 @@ const DashboardPage: React.FC = () => {
       };
 
       await new Promise((resolve) => setTimeout(resolve, 1500));
-      await addTrade(tradeWithResult);
+      await addTrade(tradeWithResult as Trade);
       setIsTradeModalOpen(false);
       loadTrades();
     } catch (error) {
@@ -188,9 +188,9 @@ const DashboardPage: React.FC = () => {
   const handleUpdateTrade = async (tradeId: number, tradeData: Trade) => {
     try {
       let result = 0;
-      if (tradeData.entry_price && tradeData.exit_price && tradeData.quantity) {
-        const entry = tradeData.entry_price;
-        const exit = tradeData.exit_price;
+      if (tradeData.entryPrice && tradeData.exitPrice && tradeData.quantity) {
+        const entry = tradeData.entryPrice;
+        const exit = tradeData.exitPrice;
         const quantity = tradeData.quantity;
 
         if (tradeData.type === "Buy") {
@@ -224,14 +224,14 @@ const DashboardPage: React.FC = () => {
     }
   };
 
-  const handlePartialExitSubmit = async (exitData: {
-    exit_quantity: number;
-    exit_price: number;
-    exit_date: string;
+  const handlePartialExitSubmit = async (data: {
+    exitQuantity: number;
+    exitPrice: number;
+    exitDate: Date;
   }) => {
     if (!tradeForPartialExit) return;
     try {
-      await executePartialExit(tradeForPartialExit.id!, exitData);
+      await executePartialExit(tradeForPartialExit.id!, data);
       setIsPartialExitModalOpen(false);
 
       const response = await getTrades();
@@ -252,14 +252,14 @@ const DashboardPage: React.FC = () => {
     }
   };
 
-  const handleIncrementSubmit = async (incrementData: {
-    increment_quantity: number;
-    increment_price: number;
-    increment_date: string;
+  const handleIncrementSubmit = async (data: {
+    incrementQuantity: number;
+    incrementPrice: number;
+    incrementDate: Date;
   }) => {
     if (!tradeForIncrement) return;
     try {
-      await incrementPosition(tradeForIncrement.id!, incrementData);
+      await incrementPosition(tradeForIncrement.id!, data);
       setIsIncrementModalOpen(false);
 
       const response = await getTrades();

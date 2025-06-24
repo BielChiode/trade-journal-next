@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Button } from "./ui/Button";
-import { Trade } from "../types/trade";
+import { Trade } from "@prisma/client";
 import Calendar from "react-calendar";
 import ButtonLoader from "@/components/ui/ButtonLoader";
 import { Input } from "./ui/Input";
@@ -9,7 +9,7 @@ type ValuePiece = Date | null;
 type Value = ValuePiece | [ValuePiece, ValuePiece];
 
 interface TradeFormProps {
-  onAddTrade?: (trade: Trade) => Promise<void>;
+  onAddTrade?: (trade: Omit<Trade, "id" | "positionId" | "userId" | "result">) => Promise<void>;
   onUpdateTrade?: (trade: Trade) => Promise<void>;
   onCancel: () => void;
   initialData?: Trade | null;
@@ -25,16 +25,16 @@ const TradeForm: React.FC<TradeFormProps> = ({
   isEditing = false,
   isPartiallyEditable = false,
 }) => {
-  const [trade, setTrade] = useState<Trade>({
-    ticker: "",
-    type: "Buy",
-    entry_date: "",
-    entry_price: 0,
-    exit_date: "",
-    exit_price: 0,
-    quantity: 0,
-    setup: "",
-    observations: "",
+  const [trade, setTrade] = useState({
+    ticker: initialData?.ticker || "",
+    type: initialData?.type || "Buy",
+    entryDate: initialData?.entryDate ? new Date(initialData.entryDate) : null,
+    entryPrice: initialData?.entryPrice || 0,
+    exitDate: initialData?.exitDate ? new Date(initialData.exitDate) : null,
+    exitPrice: initialData?.exitPrice || 0,
+    quantity: initialData?.quantity || 0,
+    setup: initialData?.setup || "",
+    observations: initialData?.observations || "",
   });
 
   const [loading, setLoading] = useState(false);
@@ -47,10 +47,15 @@ const TradeForm: React.FC<TradeFormProps> = ({
   useEffect(() => {
     if (initialData) {
       setTrade({
-        ...initialData,
-        entry_price: Number(initialData.entry_price) || 0,
-        exit_price: Number(initialData.exit_price) || 0,
+        ticker: initialData.ticker,
+        type: initialData.type,
+        entryDate: new Date(initialData.entryDate),
+        entryPrice: Number(initialData.entryPrice) || 0,
+        exitDate: initialData.exitDate ? new Date(initialData.exitDate) : null,
+        exitPrice: Number(initialData.exitPrice) || 0,
         quantity: Number(initialData.quantity) || 0,
+        setup: initialData.setup || "",
+        observations: initialData.observations || "",
       });
     }
   }, [initialData]);
@@ -86,7 +91,7 @@ const TradeForm: React.FC<TradeFormProps> = ({
     setTrade((prev) => ({
       ...prev,
       [name]:
-        name === "entry_price" || name === "exit_price" || name === "quantity"
+        name === "entryPrice" || name === "exitPrice" || name === "quantity"
           ? parseFloat(value) || 0
           : value,
     }));
@@ -94,19 +99,16 @@ const TradeForm: React.FC<TradeFormProps> = ({
 
   const handleDateChange = (
     value: Value,
-    fieldName: "entry_date" | "exit_date"
+    fieldName: "entryDate" | "exitDate"
   ) => {
     const date = Array.isArray(value) ? value[0] : value;
 
-    if (date) {
-      const formattedDate = date.toISOString().split("T")[0];
-      setTrade((prev) => ({
-        ...prev,
-        [fieldName]: formattedDate,
-      }));
-    }
+    setTrade((prev) => ({
+      ...prev,
+      [fieldName]: date,
+    }));
 
-    if (fieldName === "entry_date") {
+    if (fieldName === "entryDate") {
       setShowEntryCalendar(false);
     } else {
       setShowExitCalendar(false);
@@ -119,20 +121,37 @@ const TradeForm: React.FC<TradeFormProps> = ({
       alert("A quantidade do trade deve ser um número maior que zero.");
       return;
     }
+    if (!trade.entryDate) {
+      alert("A data de entrada é obrigatória.");
+      return;
+    }
+
     setLoading(true);
 
+    const tradePayload = {
+      ticker: trade.ticker,
+      type: trade.type,
+      entryDate: trade.entryDate,
+      entryPrice: Number(trade.entryPrice),
+      exitDate: trade.exitDate,
+      exitPrice: trade.exitPrice ? Number(trade.exitPrice) : null,
+      quantity: Number(trade.quantity),
+      setup: trade.setup,
+      observations: trade.observations,
+    };
+
     try {
-      if (isEditing && onUpdateTrade) {
-        await onUpdateTrade(trade);
+      if (isEditing && onUpdateTrade && initialData) {
+        await onUpdateTrade({ ...initialData, ...tradePayload });
       } else if (onAddTrade) {
-        await onAddTrade(trade);
+        await onAddTrade(tradePayload);
         setTrade({
           ticker: "",
           type: "Buy",
-          entry_date: "",
-          entry_price: 0,
-          exit_date: "",
-          exit_price: 0,
+          entryDate: null,
+          entryPrice: 0,
+          exitDate: null,
+          exitPrice: 0,
           quantity: 0,
           setup: "",
           observations: "",
@@ -189,8 +208,8 @@ const TradeForm: React.FC<TradeFormProps> = ({
           <div className="relative">
             <Input
               type="text"
-              name="entry_date"
-              value={trade.entry_date}
+              name="entryDate"
+              value={trade.entryDate ? trade.entryDate.toLocaleDateString('pt-BR') : ""}
               onFocus={() => setShowEntryCalendar(true)}
               readOnly
               className="cursor-pointer text-base sm:text-sm"
@@ -200,8 +219,8 @@ const TradeForm: React.FC<TradeFormProps> = ({
             {showEntryCalendar && (
               <div ref={entryCalendarRef} className="absolute z-10 mt-1">
                 <Calendar
-                  onChange={(value) => handleDateChange(value, "entry_date")}
-                  value={trade.entry_date ? new Date(trade.entry_date) : null}
+                  onChange={(value) => handleDateChange(value, "entryDate")}
+                  value={trade.entryDate}
                   locale="pt-BR"
                 />
               </div>
@@ -215,8 +234,8 @@ const TradeForm: React.FC<TradeFormProps> = ({
           <Input
             type="number"
             step="0.01"
-            name="entry_price"
-            value={trade.entry_price}
+            name="entryPrice"
+            value={trade.entryPrice}
             onChange={handleChange}
             placeholder="0.00"
             className="text-base sm:text-sm"
@@ -235,8 +254,8 @@ const TradeForm: React.FC<TradeFormProps> = ({
           <div className="relative">
             <Input
               type="text"
-              name="exit_date"
-              value={trade.exit_date ?? ""}
+              name="exitDate"
+              value={trade.exitDate ? trade.exitDate.toLocaleDateString('pt-BR') : ""}
               onFocus={() => setShowExitCalendar(true)}
               readOnly
               className="cursor-pointer text-base sm:text-sm"
@@ -245,8 +264,8 @@ const TradeForm: React.FC<TradeFormProps> = ({
             {showExitCalendar && (
               <div ref={exitCalendarRef} className="absolute z-10 mt-1">
                 <Calendar
-                  onChange={(value) => handleDateChange(value, "exit_date")}
-                  value={trade.exit_date ? new Date(trade.exit_date) : null}
+                  onChange={(value) => handleDateChange(value, "exitDate")}
+                  value={trade.exitDate}
                   locale="pt-BR"
                 />
               </div>
@@ -260,86 +279,78 @@ const TradeForm: React.FC<TradeFormProps> = ({
           <Input
             type="number"
             step="0.01"
-            name="exit_price"
-            value={trade.exit_price ?? 0}
+            name="exitPrice"
+            value={trade.exitPrice ?? ""}
             onChange={handleChange}
             placeholder="0.00"
             className="text-base sm:text-sm"
-            disabled={loading || isPartiallyEditable}
+            disabled={loading}
           />
         </div>
       </div>
-
-      {/* Quantity */}
+      
+        {/* Quantity */}
       <div>
         <label className="block text-sm font-medium text-muted-foreground mb-1">
           Quantidade *
         </label>
         <Input
           type="number"
+          step="1"
           name="quantity"
           value={trade.quantity}
           onChange={handleChange}
           placeholder="0"
           className="text-base sm:text-sm"
           required
-          disabled={loading || isPartiallyEditable}
+          disabled={loading || (isEditing && !isPartiallyEditable)}
         />
       </div>
 
-      {/* Setup */}
-      <div>
-        <label className="block text-sm font-medium text-muted-foreground mb-1">
-          Setup
-        </label>
-        <Input
-          name="setup"
-          value={trade.setup ?? ""}
-          onChange={handleChange}
-          placeholder="Ex: Rompimento de resistência"
-          className="text-base sm:text-sm"
-          disabled={loading}
-        />
+
+      {/* Setup and Observations */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+        <div>
+          <label className="block text-sm font-medium text-muted-foreground mb-1">
+            Setup
+          </label>
+          <Input
+            name="setup"
+            value={trade.setup ?? ""}
+            onChange={handleChange}
+            placeholder="Ex: Rompimento de topo"
+            className="text-base sm:text-sm"
+            disabled={loading}
+          />
+        </div>
+        <div className="sm:col-span-2">
+          <label className="block text-sm font-medium text-muted-foreground mb-1">
+            Observações
+          </label>
+          <textarea
+            name="observations"
+            value={trade.observations ?? ""}
+            onChange={handleChange}
+            rows={4}
+            placeholder="Descreva a sua estratégia, emoções, etc."
+            className="block w-full rounded-md border-input bg-background shadow-sm focus:ring-ring focus:border-ring sm:text-sm p-2 border"
+            disabled={loading}
+          />
+        </div>
       </div>
 
-      {/* Observations */}
-      <div>
-        <label className="block text-sm font-medium text-muted-foreground mb-1">
-          Observações
-        </label>
-        <textarea
-          name="observations"
-          value={trade.observations ?? ""}
-          onChange={handleChange}
-          rows={3}
-          className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-base sm:text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
-          disabled={loading}
-        />
-      </div>
-
-      {/* Buttons */}
-      <div className="flex flex-col sm:flex-row gap-3 pt-3 sm:pt-4">
-        <Button
-          type="submit"
-          className="w-full sm:flex-1 order-2 sm:order-1"
-          disabled={loading}
-        >
-          {loading ? (
-            <ButtonLoader text={isEditing ? "Atualizando..." : "Salvando..."} />
-          ) : isEditing ? (
-            "Atualizar Trade"
-          ) : (
-            "Salvar Trade"
-          )}
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={onCancel}
-          className="w-full sm:flex-1 order-1 sm:order-2"
-          disabled={loading}
-        >
+      <div className="flex justify-end gap-2 pt-2">
+        <Button type="button" variant="ghost" onClick={onCancel}>
           Cancelar
+        </Button>
+        <Button type="submit" disabled={loading}>
+          {loading ? (
+            <ButtonLoader />
+          ) : isEditing ? (
+            "Salvar Alterações"
+          ) : (
+            "Adicionar Trade"
+          )}
         </Button>
       </div>
     </form>
