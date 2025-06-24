@@ -94,6 +94,10 @@ const TradeDetailsModal: React.FC<TradeDetailsModalProps> = ({
     }
   };
 
+  const hasIncrements = position.tradesInPosition.some((t) =>
+    t.observations?.startsWith("Increment to trade")
+  );
+
   const isProfit = position.totalRealizedProfit >= 0;
 
   // Encontra o trade principal que ainda está aberto na posição
@@ -226,7 +230,7 @@ const TradeDetailsModal: React.FC<TradeDetailsModalProps> = ({
                           <ArrowDown size={18} className="text-green-500" />
                         )}
                         <div>
-                          <p className="font-medium text-gray-800 dark:text-gray-200">
+                          <p className="font-medium text-foreground">
                             Incremento: {event.quantity} @ R${" "}
                             {event.entry_price.toFixed(2)}
                           </p>
@@ -255,7 +259,7 @@ const TradeDetailsModal: React.FC<TradeDetailsModalProps> = ({
                           <ArrowUp size={18} className="text-blue-500" />
                         )}
                         <div>
-                          <p className="font-medium text-gray-800 dark:text-gray-200">
+                          <p className="font-medium text-foreground">
                             {position.type === "Buy"
                               ? "Venda Parcial"
                               : "Compra Parcial"}
@@ -335,7 +339,7 @@ const TradeDetailsModal: React.FC<TradeDetailsModalProps> = ({
             </div>
             <div>
               <label className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400">
-                Preço de Entrada
+                {hasIncrements ? "Preço Médio de Entrada" : "Preço de Entrada"}
               </label>
               <p className="mt-1 text-sm sm:text-base font-medium">
                 R$ {position.entry_price.toFixed(2)}

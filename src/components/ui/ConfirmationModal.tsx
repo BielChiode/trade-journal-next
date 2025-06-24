@@ -30,7 +30,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
         <Modal isOpen={isOpen} onClose={onClose} title={title}>
             <div className="flex flex-col items-center text-center p-4">
                 <AlertTriangle className="w-12 h-12 text-yellow-500 mb-4" />
-                <p className="mb-6 text-gray-600 text-base">{message}</p>
+                <p className="mb-6 text-foreground text-base">{message}</p>
                 <div className="flex w-full flex-col sm:flex-row gap-3">
                     <Button 
                         variant="outline" 
