@@ -4,24 +4,27 @@ import prisma from "@/lib/prisma";
 import { OperationType, PositionStatus } from "@/generated/prisma";
 
 interface RouteContext {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 export async function POST(request: NextRequest, context: RouteContext) {
+  const params = await context.params;
   try {
     const userId = getUserIdFromRequest(request);
     if (!userId) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
-    const params = await context.params;
     const positionId = parseInt(params.id, 10);
     const { quantity, price, date } = await request.json();
 
     if (!quantity || !price || !date || quantity <= 0 || price <= 0) {
-      return NextResponse.json({ message: "Invalid partial exit data" }, { status: 400 });
+      return NextResponse.json(
+        { message: "Invalid partial exit data" },
+        { status: 400 }
+      );
     }
 
     const result = await prisma.$transaction(async (tx) => {
@@ -74,10 +77,11 @@ export async function POST(request: NextRequest, context: RouteContext) {
     });
 
     return NextResponse.json(result);
-
   } catch (error: any) {
-    const paramsForError = 'params' in context ? (await context.params).id : 'unknown';
-    console.error(`Failed to execute partial exit on position ${paramsForError}:`, error);
+    console.error(
+      `Failed to execute partial exit on position ${params.id}:`,
+      error
+    );
     return NextResponse.json(
       { message: error.message || "Failed to execute partial exit" },
       { status: 400 } // Usar 400 para erros de lógica de negócio (e.g., quantidade insuficiente)
