@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { Position } from "@/types/trade";
 import PositionCard from "@/components/PositionCard";
 
-interface TradesHistoryProps {
+interface PositionsHistoryProps {
   positions: Position[];
   onOpenDetails: (position: Position) => void;
   onOpenNewTradeModal: () => void;
@@ -22,7 +22,7 @@ interface TradesHistoryProps {
   setResultFilter: (result: "all" | "profit" | "loss") => void;
 }
 
-const TradesHistory: React.FC<TradesHistoryProps> = ({
+const PositionsHistory: React.FC<PositionsHistoryProps> = ({
   positions,
   onOpenDetails,
   onOpenNewTradeModal,
@@ -39,10 +39,10 @@ const TradesHistory: React.FC<TradesHistoryProps> = ({
     <div className="mt-6 mb-6">
       <div className="flex flex-wrap items-center justify-between gap-y-3 gap-x-4 mb-3 sm:mb-4">
         <div className="flex items-center gap-3">
-          <h2 className="text-xl sm:text-2xl font-bold">Histórico de Trades</h2>
+          <h2 className="text-xl sm:text-2xl font-bold">Histórico de Posições</h2>
           <div
             className="flex items-center gap-2"
-            title="Adicionar Trade"
+            title="Adicionar Posição"
           >
             <Button
               variant="outline"
@@ -109,18 +109,26 @@ const TradesHistory: React.FC<TradesHistoryProps> = ({
               Resultado
             </Button>
             <Button
-              variant={resultFilter === "profit" ? "default" : "ghost"}
+              variant={"ghost"}
               size="sm"
               onClick={() => setResultFilter("profit")}
-              className="h-7 text-green-600"
+              className={cn("h-7", {
+                "text-green-600 hover:text-green-700": resultFilter !== "profit",
+                "bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400":
+                  resultFilter === "profit",
+              })}
             >
               Lucro
             </Button>
             <Button
-              variant={resultFilter === "loss" ? "default" : "ghost"}
+              variant={"ghost"}
               size="sm"
               onClick={() => setResultFilter("loss")}
-              className="h-7 text-red-600"
+              className={cn("h-7", {
+                "text-red-600 hover:text-red-700": resultFilter !== "loss",
+                "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400":
+                  resultFilter === "loss",
+              })}
             >
               Prejuízo
             </Button>
@@ -140,7 +148,7 @@ const TradesHistory: React.FC<TradesHistoryProps> = ({
             ))
           ) : (
             <div className="col-span-full text-center py-8 text-gray-500 dark:text-gray-400">
-              <p>Nenhum trade encontrado para os filtros selecionados.</p>
+              <p>Nenhuma posição encontrada para os filtros selecionados.</p>
             </div>
           )}
         </div>
@@ -149,4 +157,4 @@ const TradesHistory: React.FC<TradesHistoryProps> = ({
   );
 };
 
-export default TradesHistory;
+export default PositionsHistory; 

@@ -16,6 +16,7 @@ import {
   ChartOptions,
 } from "chart.js";
 import { Position } from "@/types/trade";
+import { formatCurrency } from "@/lib/utils";
 
 ChartJS.register(
   CategoryScale,
@@ -72,7 +73,7 @@ const CumulativeProfitChart: React.FC<CumulativeProfitChartProps> = ({
 
   sortedPositions.forEach((position, index) => {
     cumulativeProfit += Number(position.total_realized_pnl);
-    chartData.labels!.push(`Trade ${index + 1}`);
+    chartData.labels!.push(position.ticker);
     (chartData.datasets[0].data as number[]).push(cumulativeProfit);
   });
 
@@ -94,7 +95,19 @@ const CumulativeProfitChart: React.FC<CumulativeProfitChartProps> = ({
       tooltip: {
         callbacks: {
           label: function (context) {
-            return `Lucro Acumulado: R$ ${context.parsed.y.toFixed(2)}`;
+            if (context.dataIndex === 0) {
+              return "Capital Inicial";
+            }
+            return `Lucro Acumulado: ${formatCurrency(context.parsed.y)}`;
+          },
+          afterLabel: function (context) {
+            const positionIndex = context.dataIndex - 1;
+            if (positionIndex >= 0 && sortedPositions[positionIndex]) {
+              const position = sortedPositions[positionIndex];
+              const result = position.total_realized_pnl;
+              return `Resultado da Posição: ${formatCurrency(result)}`;
+            }
+            return "";
           },
         },
       },
