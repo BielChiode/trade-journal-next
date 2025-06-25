@@ -23,3 +23,20 @@ export const formatCurrency = (
 
   return new Intl.NumberFormat("pt-BR", options).format(Number(value));
 }; 
+
+export function formatPercentage(value: number) {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'percent',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value);
+} 
+
+export const formatDate = (dateString: string | undefined | null) => {
+  if (!dateString) return "N/A";
+  // Adiciona T00:00:00 para garantir que a data seja interpretada em UTC
+  const date = new Date(`${dateString}T00:00:00`);
+  return date.toLocaleDateString("pt-BR", {
+    timeZone: "UTC",
+  });
+}; 

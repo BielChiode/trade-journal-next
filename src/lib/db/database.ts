@@ -16,21 +16,35 @@ const db = new sqlite3.Database(dbPath, (err) => {
                 password TEXT NOT NULL
             )`);
 
-            // Tabela de Trades
-            db.run(`CREATE TABLE IF NOT EXISTS trades (
+            // Tabela de Posições
+            db.run(`CREATE TABLE IF NOT EXISTS positions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
+                ticker TEXT NOT NULL,
+                type TEXT NOT NULL CHECK(type IN ('Buy', 'Sell')),
+                status TEXT NOT NULL CHECK(status IN ('Open', 'Closed')),
+                average_entry_price REAL NOT NULL,
+                current_quantity INTEGER NOT NULL,
+                total_realized_pnl REAL NOT NULL DEFAULT 0,
+                initial_entry_date TEXT NOT NULL,
+                last_exit_date TEXT,
+                setup TEXT,
+                observations TEXT,
+                FOREIGN KEY (user_id) REFERENCES users (id)
+            )`);
+
+            // Tabela de Operações (log de eventos)
+            db.run(`CREATE TABLE IF NOT EXISTS operations (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 position_id INTEGER,
                 user_id INTEGER,
-                ticker TEXT NOT NULL,
-                type TEXT NOT NULL,
-                entry_date TEXT NOT NULL,
-                entry_price REAL NOT NULL,
-                exit_date TEXT,
-                exit_price REAL,
+                operation_type TEXT NOT NULL CHECK(operation_type IN ('Entry', 'Increment', 'PartialExit')),
                 quantity INTEGER NOT NULL,
-                setup TEXT,
-                observations TEXT,
+                price REAL NOT NULL,
+                date TEXT NOT NULL,
                 result REAL,
+                observations TEXT,
+                FOREIGN KEY (position_id) REFERENCES positions (id),
                 FOREIGN KEY (user_id) REFERENCES users (id)
             )`);
         });

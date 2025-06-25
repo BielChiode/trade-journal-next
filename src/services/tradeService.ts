@@ -1,37 +1,45 @@
 import apiClient from "./apiClient";
-import { Trade } from "../types/trade";
+import { Position, Operation } from "../types/trade";
+import { PositionFormData } from "@/components/PositionForm";
 
-export const getTrades = () => apiClient.get<Trade[]>("/trades");
-
-export const addTrade = (trade: Trade) =>
-  apiClient.post<Trade>("/trades", trade);
-
-export const updateTrade = (id: number, trade: Trade) =>
-  apiClient.put<Trade>(`/trades/${id}`, trade);
-
-export const deletePosition = (id: number) =>
-  apiClient.delete<void>(`/trades/${id}`);
-
-export const getTradesByPositionId = (positionId: number) =>
-  apiClient.get<Trade[]>(`/trades/position/${positionId}`);
-
-export const executePartialExit = (
-  tradeId: number,
-  exitData: { exit_quantity: number; exit_price: number; exit_date: string }
-) => {
-  return apiClient.post<{ message: string }>(
-    `/trades/${tradeId}/partial-exit`,
-    exitData
-  );
+// Tipagem para a criação de uma nova posição, que não precisa de todos os campos de uma Posição
+type CreatePositionData = {
+  ticker: string;
+  type: "Buy" | "Sell";
+  entry_date: string;
+  entry_price: number;
+  quantity: number;
+  observations?: string;
 };
 
-export const incrementPosition = (
-  tradeId: number,
-  incrementData: {
-    increment_quantity: number;
-    increment_price: number;
-    increment_date: string;
-  }
-) => {
-  return apiClient.post(`/trades/${tradeId}/increment-position`, incrementData);
+export const getPositions = () => apiClient.get<Position[]>("/trades");
+
+export const addPosition = (positionData: CreatePositionData) =>
+  apiClient.post<{ positionId: number }>("/trades", positionData);
+
+export const updatePosition = (positionId: number, data: PositionFormData) =>
+  apiClient.put(`/trades/${positionId}`, data);
+
+export const getOperationsByPositionId = (positionId: number) =>
+  apiClient.get<Operation[]>(`/positions/${positionId}/operations`);
+
+export const deletePosition = (positionId: number) =>
+  apiClient.delete<void>(`/trades/${positionId}`);
+
+type IncrementData = {
+  quantity: number;
+  price: number;
+  date: string;
 };
+
+export const incrementPosition = (positionId: number, data: IncrementData) =>
+  apiClient.post(`/positions/${positionId}/increment`, data);
+
+type PartialExitData = {
+  quantity: number;
+  price: number;
+  date: string;
+};
+
+export const executePartialExit = (positionId: number, data: PartialExitData) =>
+  apiClient.post(`/positions/${positionId}/partial-exit`, data);

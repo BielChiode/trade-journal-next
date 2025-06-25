@@ -8,15 +8,15 @@ type ValuePiece = Date | null;
 type Value = ValuePiece | [ValuePiece, ValuePiece];
 
 interface PositionIncrementFormProps {
-  onSubmit: (data: { increment_quantity: number; increment_price: number; increment_date: string }) => Promise<void>;
+  onSubmit: (data: { quantity: number; price: number; date: string }) => Promise<void>;
   onCancel: () => void;
   currentQuantity: number;
 }
 
 const PositionIncrementForm: React.FC<PositionIncrementFormProps> = ({ onSubmit, onCancel, currentQuantity }) => {
-  const [increment_quantity, setIncrementQuantity] = useState<number | ''>('');
-  const [increment_price, setIncrementPrice] = useState<number | ''>('');
-  const [increment_date, setIncrementDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [quantity, setQuantity] = useState<number | ''>('');
+  const [price, setPrice] = useState<number | ''>('');
+  const [date, setDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [loading, setLoading] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
   const calendarRef = useRef<HTMLDivElement>(null);
@@ -34,20 +34,20 @@ const PositionIncrementForm: React.FC<PositionIncrementFormProps> = ({ onSubmit,
   }, [calendarRef]);
 
   const handleDateChange = (value: Value) => {
-    const date = Array.isArray(value) ? value[0] : value;
-    if (date) {
-      setIncrementDate(date.toISOString().split('T')[0]);
+    const newDate = Array.isArray(value) ? value[0] : value;
+    if (newDate) {
+      setDate(newDate.toISOString().split('T')[0]);
     }
     setShowCalendar(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!increment_quantity || !increment_price || !increment_date) {
+    if (!quantity || !price || !date) {
       alert('Por favor, preencha todos os campos.');
       return;
     }
-    if (increment_quantity <= 0) {
+    if (quantity <= 0) {
       alert('A quantidade deve ser maior que zero.');
       return;
     }
@@ -55,9 +55,9 @@ const PositionIncrementForm: React.FC<PositionIncrementFormProps> = ({ onSubmit,
     setLoading(true);
     try {
       await onSubmit({
-        increment_quantity: Number(increment_quantity),
-        increment_price: Number(increment_price),
-        increment_date,
+        quantity: Number(quantity),
+        price: Number(price),
+        date,
       });
     } catch (error) {
         console.error("Error on position increment submission", error);
@@ -74,8 +74,8 @@ const PositionIncrementForm: React.FC<PositionIncrementFormProps> = ({ onSubmit,
         </label>
         <Input
           type="number"
-          value={increment_quantity}
-          onChange={(e) => setIncrementQuantity(Number(e.target.value) || '')}
+          value={quantity}
+          onChange={(e) => setQuantity(Number(e.target.value) || '')}
           placeholder="Ex: 50"
           required
           disabled={loading}
@@ -87,8 +87,8 @@ const PositionIncrementForm: React.FC<PositionIncrementFormProps> = ({ onSubmit,
           <Input
             type="number"
             step="0.01"
-            value={increment_price}
-            onChange={(e) => setIncrementPrice(Number(e.target.value) || '')}
+            value={price}
+            onChange={(e) => setPrice(Number(e.target.value) || '')}
             placeholder="0.00"
             required
             disabled={loading}
@@ -99,7 +99,7 @@ const PositionIncrementForm: React.FC<PositionIncrementFormProps> = ({ onSubmit,
           <div className="relative">
             <Input
               type="text"
-              value={increment_date}
+              value={date}
               onFocus={() => setShowCalendar(true)}
               readOnly
               className="cursor-pointer"
@@ -110,7 +110,7 @@ const PositionIncrementForm: React.FC<PositionIncrementFormProps> = ({ onSubmit,
               <div ref={calendarRef} className="absolute z-10 mt-1 right-0 sm:right-auto">
                 <Calendar
                   onChange={handleDateChange}
-                  value={increment_date ? new Date(increment_date) : null}
+                  value={date ? new Date(date) : null}
                   locale="pt-BR"
                 />
               </div>
