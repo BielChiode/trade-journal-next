@@ -1,12 +1,19 @@
-import db from "@/lib/db/database";
+import pool from "@/lib/db/database";
 import { Position, Operation } from "@/types/trade";
+
+// Helper para garantir que a conexão do pool seja liberada
+async function withClient<T>(callback: (client: any) => Promise<T>): Promise<T> {
+  const client = await pool.connect();
+  try {
+    return await callback(client);
+  } finally {
+    client.release();
+  }
+}
 
 export const PositionModel = {
   // Encontra todas as posições de um usuário
-  findAllByUser: (
-    userId: number,
-    callback: (err: Error | null, positions: Position[]) => void
-  ) => {
+  async findAllByUser(userId: number): Promise<Position[]> {
     const query = `
       SELECT
         p.*,
@@ -27,75 +34,50 @@ export const PositionModel = {
           ELSE NULL
         END AS average_exit_price
       FROM positions p
-      WHERE p.user_id = ?
+      WHERE p.user_id = $1
     `;
-    db.all(query, [userId], callback);
+    const { rows } = await pool.query(query, [userId]);
+    return rows as Position[];
   },
 
   // Encontra uma posição pelo ID
-  findById: (
-    positionId: number,
-    userId: number,
-    callback: (err: Error | null, position: Position | null) => void
-  ) => {
-    const query = "SELECT * FROM positions WHERE id = ? AND user_id = ?";
-    db.get(query, [positionId, userId], callback);
+  async findById(positionId: number, userId: number): Promise<Position | null> {
+    const { rows } = await pool.query<Position>('SELECT * FROM positions WHERE id = $1 AND user_id = $2', [positionId, userId]);
+    return rows[0] || null;
   },
 
-  // Deleta uma posição e todas as suas operações associadas
-  delete: (
-    positionId: number,
-    userId: number,
-    callback: (err: Error | null) => void
-  ) => {
-    db.serialize(() => {
-      db.run("BEGIN TRANSACTION;", (err) => {
-        if (err) return callback(err);
-
-        const deleteOpsQuery = "DELETE FROM operations WHERE position_id = ? AND user_id = ?";
-        db.run(deleteOpsQuery, [positionId, userId], (err) => {
-          if (err) {
-            db.run("ROLLBACK;");
-            return callback(err);
-          }
-
-          const deletePosQuery = "DELETE FROM positions WHERE id = ? AND user_id = ?";
-          db.run(deletePosQuery, [positionId, userId], (err) => {
-      if (err) {
-              db.run("ROLLBACK;");
-        return callback(err);
+  // Deleta uma posição e todas as suas operações associadas usando uma transação
+  async delete(positionId: number, userId: number): Promise<void> {
+    return withClient(async (client) => {
+      await client.query('BEGIN');
+      try {
+        await client.query('DELETE FROM operations WHERE position_id = $1 AND user_id = $2', [positionId, userId]);
+        await client.query('DELETE FROM positions WHERE id = $1 AND user_id = $2', [positionId, userId]);
+        await client.query('COMMIT');
+      } catch (e) {
+        await client.query('ROLLBACK');
+        throw e;
       }
-            db.run("COMMIT;", callback);
-          });
-        });
-      });
     });
   },
 
   // Encontra todas as operações para uma determinada posição
-  findOperationsByPositionId: (
-    positionId: number,
-    callback: (err: Error | null, operations: Operation[]) => void
-  ) => {
-    const query = "SELECT * FROM operations WHERE position_id = ? ORDER BY date ASC";
-    db.all(query, [positionId], callback);
+  async findOperationsByPositionId(positionId: number): Promise<Operation[]> {
+    const { rows } = await pool.query<Operation>('SELECT * FROM operations WHERE position_id = $1 ORDER BY date ASC', [positionId]);
+    return rows;
   },
 };
 
 export const OperationModel = {
-    // Cria uma nova operação
-    create: (
-      operation: Omit<Operation, 'id'>,
-      callback: (err: Error | null, result: { id: number } | null) => void
-  ) => {
+    // Cria uma nova operação e retorna o ID
+    async create(operation: Omit<Operation, 'id'>): Promise<{ id: number }> {
       const { position_id, user_id, operation_type, quantity, price, date, result: opResult, observations } = operation;
       const query = `
         INSERT INTO operations (position_id, user_id, operation_type, quantity, price, date, result, observations)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        RETURNING id
       `;
-      db.run(query, [position_id, user_id, operation_type, quantity, price, date, opResult, observations], function(err) {
-        if (err) return callback(err, null);
-        callback(null, { id: this.lastID });
-      });
+      const { rows } = await pool.query(query, [position_id, user_id, operation_type, quantity, price, date, opResult, observations]);
+      return rows[0] as { id: number };
     }
 };

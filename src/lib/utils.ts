@@ -32,11 +32,17 @@ export function formatPercentage(value: number) {
   }).format(value);
 } 
 
-export const formatDate = (dateString: string | undefined | null) => {
-  if (!dateString) return "N/A";
-  // Adiciona T00:00:00 para garantir que a data seja interpretada em UTC
-  const date = new Date(`${dateString}T00:00:00`);
-  return date.toLocaleDateString("pt-BR", {
-    timeZone: "UTC",
+export const formatDate = (date: Date | string | undefined | null) => {
+  if (!date) return "N/A";
+
+  const dateObj = typeof date === 'string' ? new Date(date) : date;
+
+  // Verifica se a data é válida antes de formatar
+  if (isNaN(dateObj.getTime())) {
+    return "Invalid Date";
+  }
+  
+  return dateObj.toLocaleDateString("pt-BR", {
+    timeZone: "UTC", // Manter em UTC para consistência
   });
 }; 

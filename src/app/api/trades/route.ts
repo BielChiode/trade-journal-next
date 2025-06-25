@@ -5,20 +5,15 @@ import { PositionModel } from "@/models/position";
 
 export async function GET(request: NextRequest) {
   try {
-  const userId = getUserIdFromRequest(request);
-  if (!userId) {
-    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-  }
+    const userId = getUserIdFromRequest(request);
+    if (!userId) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
 
-    const positions = await new Promise((resolve, reject) => {
-      PositionModel.findAllByUser(userId, (err, positions) => {
-        if (err) return reject(err);
-        resolve(positions);
-      });
-    });
+    const positions = await PositionModel.findAllByUser(userId);
 
     return NextResponse.json(positions);
-    
+
   } catch (error) {
     console.error("Failed to fetch positions:", error);
     return NextResponse.json(

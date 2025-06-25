@@ -4,9 +4,9 @@ export interface Trade {
     position_id?: number;
     ticker: string;
     type: 'Buy' | 'Sell';
-    entry_date: string;
+    entry_date: Date;
     entry_price: number;
-    exit_date?: string | null;
+    exit_date?: Date | null;
     exit_price?: number | null;
     quantity: number;
     setup?: string | null;
@@ -23,8 +23,8 @@ export interface Position {
   average_entry_price: number;
   current_quantity: number;
   total_realized_pnl: number;
-  initial_entry_date: string;
-  last_exit_date?: string;
+  initial_entry_date: Date;
+  last_exit_date?: Date | null;
   total_quantity?: number;
   average_exit_price?: number;
   setup?: string;
@@ -38,7 +38,7 @@ export interface Operation {
   operation_type: 'Entry' | 'Increment' | 'PartialExit';
   quantity: number;
   price: number;
-  date: string;
+  date: Date;
   result?: number;
   observations?: string;
 } 

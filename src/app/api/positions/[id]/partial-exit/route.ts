@@ -1,22 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getUserIdFromRequest } from "@/lib/auth";
-import db from "@/lib/db/database";
+import pool from "@/lib/db/database";
 import { Position } from "@/types/trade";
-
-const findPositionById = (positionId: number, userId: number): Promise<Position> => {
-  return new Promise((resolve, reject) => {
-    db.get("SELECT * FROM positions WHERE id = ? AND user_id = ?", [positionId, userId], (err, row: Position) => {
-      if (err) return reject(err);
-      if (!row) return reject(new Error("Position not found"));
-      resolve(row);
-    });
-  });
-};
 
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const client = await pool.connect();
   try {
     const userId = getUserIdFromRequest(request);
     if (!userId) {
@@ -30,68 +21,56 @@ export async function POST(
       return NextResponse.json({ message: "Invalid partial exit data" }, { status: 400 });
     }
 
-    const position = await findPositionById(positionId, userId);
+    await client.query('BEGIN');
 
+    // 1. Buscar e bloquear a posição para a atualização
+    const positionResult = await client.query('SELECT * FROM positions WHERE id = $1 AND user_id = $2 FOR UPDATE', [positionId, userId]);
+    const position = positionResult.rows[0];
+
+    if (!position) {
+        throw new Error("Position not found");
+    }
+    
     if (quantity > position.current_quantity) {
+        await client.query('ROLLBACK'); // Libera o lock
         return NextResponse.json({ message: "Exit quantity cannot be greater than current quantity" }, { status: 400 });
     }
 
-    // --- Início da Transação ---
-    await new Promise<void>((resolve, reject) => {
-        db.serialize(() => {
-            db.run("BEGIN TRANSACTION", (err) => { if (err) return reject(err); });
+    // 2. Calcular o resultado da operação
+    const result = (price - position.average_entry_price) * quantity;
+    
+    // 3. Calcular novos valores para a posição
+    const newQuantity = position.current_quantity - quantity;
+    const newTotalRealizedPnl = position.total_realized_pnl + result;
+    const newStatus = newQuantity === 0 ? 'Closed' : 'Open';
 
-            // 1. Calcular o resultado da operação
-            const result = (price - position.average_entry_price) * quantity;
-            
-            // 2. Calcular novos valores para a posição
-            const newQuantity = position.current_quantity - quantity;
-            const newTotalRealizedPnl = position.total_realized_pnl + result;
-            const newStatus = newQuantity === 0 ? 'Closed' : 'Open';
+    // 4. Atualizar a posição
+    const updatePositionQuery = `
+        UPDATE positions
+        SET current_quantity = $1, total_realized_pnl = $2, status = $3, last_exit_date = $4
+        WHERE id = $5
+    `;
+    await client.query(updatePositionQuery, [newQuantity, newTotalRealizedPnl, newStatus, date, positionId]);
 
-            // 3. Atualizar a posição
-            const updatePositionQuery = `
-                UPDATE positions
-                SET current_quantity = ?, total_realized_pnl = ?, status = ?, last_exit_date = ?
-                WHERE id = ?
-            `;
-            db.run(updatePositionQuery, [newQuantity, newTotalRealizedPnl, newStatus, date, positionId], function (err) {
-                if (err) {
-                    db.run("ROLLBACK");
-                    return reject(err);
-                }
+    // 5. Criar a operação de saída parcial
+    const createOperationQuery = `
+        INSERT INTO operations (position_id, user_id, operation_type, quantity, price, date, result)
+        VALUES ($1, $2, 'PartialExit', $3, $4, $5, $6)
+    `;
+    await client.query(createOperationQuery, [positionId, userId, quantity, price, date, result]);
 
-                // 4. Criar a operação de saída parcial
-                const createOperationQuery = `
-                    INSERT INTO operations (position_id, user_id, operation_type, quantity, price, date, result)
-                    VALUES (?, ?, 'PartialExit', ?, ?, ?, ?)
-                `;
-                db.run(createOperationQuery, [positionId, userId, quantity, price, date, result], function(err) {
-                    if (err) {
-                        db.run("ROLLBACK");
-                        return reject(err);
-                    }
-                    
-                    db.run("COMMIT", (err) => {
-                        if (err) {
-                            db.run("ROLLBACK");
-                            return reject(err);
-                        }
-                        resolve();
-                    });
-                });
-            });
-        });
-    });
-    // --- Fim da Transação ---
+    await client.query('COMMIT');
 
     return NextResponse.json({ message: "Partial exit executed successfully" });
 
   } catch (error: any) {
+    await client.query('ROLLBACK');
     console.error("Failed to execute partial exit:", error);
     return NextResponse.json(
       { message: error.message || "Failed to execute partial exit" },
       { status: 500 }
     );
+  } finally {
+    client.release();
   }
 }

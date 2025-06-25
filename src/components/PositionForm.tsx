@@ -39,11 +39,13 @@ const PositionForm: React.FC<PositionFormProps> = ({
   const [formData, setFormData] = useState<PositionFormData>({
     ticker: initialData?.ticker || "",
     type: initialData?.type || "Buy",
-    entry_date: (initialData as Position)?.initial_entry_date || (initialData as PositionFormData)?.entry_date || new Date().toISOString().split("T")[0],
+    entry_date: isPosition
+      ? ((initialData as Position).initial_entry_date).toISOString().split("T")[0]
+      : (initialData as PositionFormData)?.entry_date || new Date().toISOString().split("T")[0],
     entry_price: (initialData as Position)?.average_entry_price || (initialData as PositionFormData)?.entry_price || 0,
-    quantity: isPosition 
-      ? ((initialData as Position).status === 'Closed' 
-          ? (initialData as Position).total_quantity 
+    quantity: isPosition
+      ? ((initialData as Position).status === 'Closed'
+          ? (initialData as Position).total_quantity
           : (initialData as Position).current_quantity) ?? 0
       : (initialData as PositionFormData)?.quantity || 0,
     setup: initialData?.setup || "",
