@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "next dev --turbopack",
+    "build:vercel": "tsx scripts/init-db.ts && next build",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",

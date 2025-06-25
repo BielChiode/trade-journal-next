@@ -1,21 +1,17 @@
-import pg from 'pg';
+import pg from "pg";
 
-// O PostgreSQL retorna o tipo NUMERIC(1700) como string para evitar perda de precisão.
-// Para nossa aplicação, podemos seguramente convertê-lo para um float.
-// Esta configuração é global para a instância do pg.
 pg.types.setTypeParser(1700, (val) => parseFloat(val));
 
 const { Pool } = pg;
 
-// A configuração do pool será feita uma única vez.
-// Em produção, a Vercel injeta a connection string com SSL.
-// Localmente, nosso .env.local aponta para o Docker sem SSL.
 const pool = new Pool({
   connectionString: process.env.POSTGRES_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+  ssl:
+    process.env.NODE_ENV === "production"
+      ? { rejectUnauthorized: false }
+      : false,
 });
 
-// Função para criar as tabelas se não existirem, agora usando o pool do pg.
 export async function initializeDatabase() {
   const client = await pool.connect();
   try {
@@ -58,14 +54,13 @@ export async function initializeDatabase() {
         observations TEXT
       );
     `);
-    console.log('Tables created successfully or already exist.');
+    console.log("Tables created successfully or already exist.");
   } catch (error) {
-    console.error('Error creating tables:', error);
+    console.error("Error creating tables:", error);
     throw error;
   } finally {
     client.release();
   }
 }
 
-// Exportamos apenas o pool. Ele será nosso único ponto de contato com o DB.
-export default pool; 
+export default pool;
