@@ -3,11 +3,8 @@ import { PositionModel, OperationModel } from "@/models/position";
 import { Position, Operation, Trade } from "@/types/trade";
 
 export const getOperationsByPositionId = (positionId: number, userId: number): Promise<Operation[]> => {
-  // Esta função agora pode usar o PositionModel diretamente.
-  // A query original também filtrava por userId, que é uma boa prática.
-  // O ideal é que a lógica no modelo também inclua o userId.
-  // Por agora, vamos usar o que temos.
-  return PositionModel.findOperationsByPositionId(positionId);
+  // Passando o userId para a camada do modelo para segurança.
+  return PositionModel.findOperationsByPositionId(positionId, userId);
 };
 
 // As funções de TradeModel parecem ser código legado e estão comentadas

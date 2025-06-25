@@ -1,33 +1,23 @@
 import { NextRequest } from "next/server";
-import jwt from "jsonwebtoken";
-
-const JWT_SECRET = process.env.JWT_SECRET || "your-default-secret";
-
-interface DecodedToken {
-  id: number;
-  email: string;
-  iat: number;
-  exp: number;
-}
+import { verifyAccessToken } from "./jwt";
 
 export function getUserIdFromRequest(request: NextRequest): number | null {
   const authHeader = request.headers.get("Authorization");
   if (!authHeader) {
-    console.error("Authorization header missing");
+    // Silencioso em produção, mas pode logar em dev
     return null;
   }
 
   const token = authHeader.split(" ")[1];
   if (!token) {
-    console.error("Token missing from Authorization header");
     return null;
   }
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as DecodedToken;
-    return decoded.id;
+    const decoded = verifyAccessToken(token);
+    return decoded ? decoded.id : null;
   } catch (error) {
-    console.error("Invalid token:", error);
+    console.error("Token verification error:", error);
     return null;
   }
 } 

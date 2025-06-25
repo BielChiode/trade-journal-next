@@ -55,7 +55,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     setLoading(true);
     try {
       const { data } = await authService.login(credentials);
-      const token = data.token;
+      const token = data.accessToken;
       localStorage.setItem("token", token);
       apiClient.defaults.headers.Authorization = `Bearer ${token}`;
       const decodedUser = jwtDecode<User>(token);
