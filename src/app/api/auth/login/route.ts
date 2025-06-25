@@ -1,11 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
 import pool from "@/lib/db/database";
 import { User } from "@/types/auth";
-
-
-const JWT_SECRET = process.env.JWT_SECRET || "your-default-secret";
+import { createAccessToken, createRefreshToken } from "@/lib/jwt";
 
 export async function POST(req: NextRequest) {
   try {
@@ -38,11 +35,20 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, {
-      expiresIn: "1h",
+    const accessToken = createAccessToken(user);
+    const refreshToken = createRefreshToken(user);
+
+    const response = NextResponse.json({ accessToken });
+
+    response.cookies.set("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 7, // 7 dias
     });
 
-    return NextResponse.json({ token });
+    return response;
   } catch (error) {
     console.error("Login error:", error);
     return NextResponse.json(
@@ -50,4 +56,4 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
-} 
+}

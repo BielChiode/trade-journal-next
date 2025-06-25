@@ -64,11 +64,7 @@ const DashboardPage: React.FC = () => {
     if (!isAuthenticated) return;
     try {
       const response = await getPositions();
-      setPositions(
-        response.sort((a, b) => {
-          return b.initial_entry_date.getTime() - a.initial_entry_date.getTime();
-        })
-      );
+      setPositions(response);
     } catch (error) {
       console.error("Erro ao carregar posições:", error);
     }

@@ -35,6 +35,12 @@ export const PositionModel = {
         END AS average_exit_price
       FROM positions p
       WHERE p.user_id = $1
+      ORDER BY
+        CASE
+          WHEN p.status = 'Open' THEN 1
+          ELSE 2
+        END,
+        p.last_exit_date DESC NULLS LAST
     `;
     const { rows } = await pool.query(query, [userId]);
     return rows as Position[];
@@ -61,9 +67,9 @@ export const PositionModel = {
     });
   },
 
-  // Encontra todas as operações para uma determinada posição
-  async findOperationsByPositionId(positionId: number): Promise<Operation[]> {
-    const { rows } = await pool.query<Operation>('SELECT * FROM operations WHERE position_id = $1 ORDER BY date ASC', [positionId]);
+  // Encontra todas as operações para uma determinada posição, validando o usuário
+  async findOperationsByPositionId(positionId: number, userId: number): Promise<Operation[]> {
+    const { rows } = await pool.query<Operation>('SELECT * FROM operations WHERE position_id = $1 AND user_id = $2 ORDER BY date ASC', [positionId, userId]);
     return rows;
   },
 };
