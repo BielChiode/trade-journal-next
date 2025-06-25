@@ -104,7 +104,39 @@ const PositionDetailsModal: React.FC<PositionDetailsModalProps> = ({
   const isProfit = position.total_realized_pnl >= 0;
   const isEditRestricted = position.status === 'Closed' || operations.length > 1;
 
+  // Lógica para calcular os valores derivados para posições fechadas
+  const closedPositionMetrics = React.useMemo(() => {
+    if (position.status !== 'Closed' || operations.length === 0) {
+      return { total_quantity: 0, average_exit_price: 0 };
+    }
+
+    const entryOperations = operations.filter(op => op.operation_type === 'Entry' || op.operation_type === 'Increment');
+    const exitOperations = operations.filter(op => op.operation_type === 'PartialExit');
+
+    const total_quantity = entryOperations.reduce((acc, op) => acc + op.quantity, 0);
+    
+    let average_exit_price = 0;
+    if (exitOperations.length > 0) {
+      const totalExitValue = exitOperations.reduce((acc, op) => acc + (op.price * op.quantity), 0);
+      const totalExitQuantity = exitOperations.reduce((acc, op) => acc + op.quantity, 0);
+      average_exit_price = totalExitQuantity > 0 ? totalExitValue / totalExitQuantity : 0;
+    }
+    
+    return { total_quantity, average_exit_price };
+  }, [position, operations]);
+
   if (isEditing) {
+    // Criamos uma cópia dos dados iniciais para passar ao formulário
+    const formData = {
+      ...position,
+      // Se a posição estiver fechada, usamos a quantidade total calculada
+      quantity: position.status === 'Closed' ? closedPositionMetrics.total_quantity : position.current_quantity,
+      // Convertemos o preço médio para número
+      price: position.average_entry_price,
+      // Formatamos a data
+      date: position.initial_entry_date.toISOString().split("T")[0],
+    };
+
     return (
       <Modal
         isOpen={isEditing}
@@ -114,7 +146,7 @@ const PositionDetailsModal: React.FC<PositionDetailsModalProps> = ({
         <PositionForm
           onSubmit={handleUpdate}
           onClose={() => setIsEditing(false)}
-          initialData={position}
+          initialData={formData}
           isEditing={true}
           isEditRestricted={isEditRestricted}
         />
@@ -261,8 +293,8 @@ const PositionDetailsModal: React.FC<PositionDetailsModalProps> = ({
                   Preço Médio de Saída
                 </label>
                 <p className="mt-1 text-sm sm:text-base font-medium">
-                  {position.average_exit_price
-                    ? formatCurrency(position.average_exit_price)
+                  {closedPositionMetrics.average_exit_price > 0
+                    ? formatCurrency(closedPositionMetrics.average_exit_price)
                     : "-"}
                 </p>
               </div>
@@ -275,7 +307,7 @@ const PositionDetailsModal: React.FC<PositionDetailsModalProps> = ({
               </label>
               <p className="mt-1 text-sm sm:text-base font-medium">
                 {position.status === "Closed"
-                  ? position.total_quantity
+                  ? closedPositionMetrics.total_quantity
                   : position.current_quantity}
               </p>
             </div>

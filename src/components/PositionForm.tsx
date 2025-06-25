@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Button } from "./ui/Button";
 import Calendar from "react-calendar";
+import "react-calendar/dist/Calendar.css";
 import ButtonLoader from "@/components/ui/ButtonLoader";
 import { Input } from "./ui/Input";
 import { Position } from "@/types/trade";
@@ -12,8 +13,8 @@ type Value = ValuePiece | [ValuePiece, ValuePiece];
 export type PositionFormData = {
   ticker: string;
   type: "Buy" | "Sell";
-  entry_date: string;
-  entry_price: number;
+  date: string;
+  price: number;
   quantity: number;
   setup?: string;
   observations?: string;
@@ -34,35 +35,27 @@ const PositionForm: React.FC<PositionFormProps> = ({
   isEditing = false,
   isEditRestricted = false,
 }) => {
-  const isPosition = initialData && "status" in initialData;
-
   const [formData, setFormData] = useState<PositionFormData>({
     ticker: initialData?.ticker || "",
     type: initialData?.type || "Buy",
-    entry_date: isPosition
-      ? ((initialData as Position).initial_entry_date).toISOString().split("T")[0]
-      : (initialData as PositionFormData)?.entry_date || new Date().toISOString().split("T")[0],
-    entry_price: (initialData as Position)?.average_entry_price || (initialData as PositionFormData)?.entry_price || 0,
-    quantity: isPosition
-      ? ((initialData as Position).status === 'Closed'
-          ? (initialData as Position).total_quantity
-          : (initialData as Position).current_quantity) ?? 0
-      : (initialData as PositionFormData)?.quantity || 0,
+    date: (initialData as PositionFormData)?.date || new Date().toISOString().split("T")[0],
+    price: (initialData as PositionFormData)?.price || 0,
+    quantity: (initialData as PositionFormData)?.quantity || 0,
     setup: initialData?.setup || "",
     observations: initialData?.observations || "",
   });
 
   const [loading, setLoading] = useState(false);
-  const [showEntryCalendar, setShowEntryCalendar] = useState(false);
-  const entryCalendarRef = useRef<HTMLDivElement>(null);
+  const [showCalendar, setShowCalendar] = useState(false);
+  const calendarRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
-        entryCalendarRef.current &&
-        !entryCalendarRef.current.contains(event.target as Node)
+        calendarRef.current &&
+        !calendarRef.current.contains(event.target as Node)
       ) {
-        setShowEntryCalendar(false);
+        setShowCalendar(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -80,26 +73,26 @@ const PositionForm: React.FC<PositionFormProps> = ({
     setFormData((prev) => ({
       ...prev,
       [name]:
-        name === "entry_price" || name === "quantity"
+        name === "price" || name === "quantity"
           ? parseFloat(value) || ""
           : value,
     }));
   };
 
   const handleDateChange = (value: Value) => {
-    const date = Array.isArray(value) ? value[0] : value;
-    if (date) {
+    const newDate = Array.isArray(value) ? value[0] : value;
+    if (newDate) {
       setFormData((prev) => ({
         ...prev,
-        entry_date: date.toISOString().split("T")[0],
+        date: newDate.toISOString().split("T")[0],
       }));
     }
-    setShowEntryCalendar(false);
+    setShowCalendar(false);
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (formData.quantity <= 0 || formData.entry_price <= 0) {
+    if (formData.quantity <= 0 || formData.price <= 0) {
       alert("Quantidade e Preço devem ser maiores que zero.");
       return;
     }
@@ -148,29 +141,29 @@ const PositionForm: React.FC<PositionFormProps> = ({
         </div>
       </div>
 
-      {/* Entry Date and Price */}
+      {/* Date and Price */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
         <div>
           <label className="block text-sm font-medium text-muted-foreground mb-1">
-            Data de Entrada *
+            Data *
           </label>
           <div className="relative">
             <Input
               type="text"
-              name="entry_date"
-              value={formData.entry_date}
-              onFocus={() => !isEditRestricted && setShowEntryCalendar(true)}
+              name="date"
+              value={formData.date}
+              onFocus={() => !isEditRestricted && setShowCalendar(true)}
               readOnly
               className="cursor-pointer text-base sm:text-sm"
               required
               disabled={isEditRestricted}
             />
-            {showEntryCalendar && (
-              <div ref={entryCalendarRef} className="absolute z-10 mt-1">
+            {showCalendar && (
+              <div ref={calendarRef} className="absolute z-10 mt-1">
                 <Calendar
                   onChange={handleDateChange}
                   value={
-                    formData.entry_date ? new Date(formData.entry_date) : null
+                    formData.date ? new Date(formData.date) : null
                   }
                   locale="pt-BR"
                 />
@@ -180,13 +173,13 @@ const PositionForm: React.FC<PositionFormProps> = ({
         </div>
         <div>
           <label className="block text-sm font-medium text-muted-foreground mb-1">
-            Preço de Entrada *
+            Preço *
           </label>
           <Input
             type="number"
             step="0.01"
-            name="entry_price"
-            value={formData.entry_price}
+            name="price"
+            value={formData.price}
             onChange={handleChange}
             placeholder="0.00"
             className="text-base sm:text-sm"

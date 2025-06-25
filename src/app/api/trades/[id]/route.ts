@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getUserIdFromRequest } from "@/lib/auth";
-import { updatePositionDetails } from "@/lib/db/position-helpers";
-import { PositionModel } from "@/models/position";
+import prisma from "@/lib/prisma";
 
 interface RouteContext {
   params: Promise<{
@@ -35,52 +34,64 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
 export async function PUT(request: NextRequest, context: RouteContext) {
   try {
-    const params = await context.params;
     const userId = getUserIdFromRequest(request);
     if (!userId) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
+    const params = await context.params;
     const positionId = parseInt(params.id, 10);
     const body = await request.json();
+    const { setup, observations } = body;
 
-    await updatePositionDetails(positionId, userId, body);
+    const updatedPosition = await prisma.position.update({
+      where: {
+        id: positionId,
+        userId: userId,
+      },
+      data: {
+        setup,
+        observations,
+      },
+    });
 
-    return NextResponse.json({ message: "Position updated successfully" });
+    return NextResponse.json(updatedPosition);
+
   } catch (error: any) {
-    const paramsForError =
-      "params" in context ? (await context.params).id : "unknown";
+    const paramsForError = 'params' in context ? (await context.params).id : 'unknown';
     console.error(`Failed to update position ${paramsForError}:`, error);
     return NextResponse.json(
-      { message: error.message || "Failed to update position" },
-      { status: error.message.includes("not found") ? 404 : 500 }
+      { message: "Failed to update position" },
+      { status: 500 }
     );
   }
 }
 
 export async function DELETE(request: NextRequest, context: RouteContext) {
   try {
-    const params = await context.params;
     const userId = getUserIdFromRequest(request);
     if (!userId) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
+    const params = await context.params;
     const positionId = parseInt(params.id, 10);
 
-    await PositionModel.delete(positionId, userId);
+    await prisma.position.delete({
+      where: {
+        id: positionId,
+        userId: userId,
+      },
+    });
 
-    return NextResponse.json(
-      { message: "Position deleted successfully" },
-      { status: 200 }
-    );
+    return NextResponse.json({ message: "Position deleted successfully" });
+    
   } catch (error: any) {
-    const paramsForError =
-      "params" in context ? (await context.params).id : "unknown";
+    const paramsForError = 'params' in context ? (await context.params).id : 'unknown';
     console.error(`Failed to delete position ${paramsForError}:`, error);
     return NextResponse.json(
-      { message: error.message || "Failed to delete position" },
-      { status: error.message.includes("not found") ? 404 : 500 }
+      { message: "Failed to delete position" },
+      { status: 500 }
     );
   }
 }

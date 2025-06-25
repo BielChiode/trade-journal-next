@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
-import pool from "@/lib/db/database";
+import prisma from "@/lib/prisma";
+import { Prisma } from "@/generated/prisma";
 
-export async function POST(req: NextRequest) {
+export async function POST(request: NextRequest) {
   try {
-    const { email, password } = await req.json();
+    const { email, password } = await request.json();
 
     if (!email || !password) {
       return NextResponse.json(
@@ -15,26 +16,30 @@ export async function POST(req: NextRequest) {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const query = `
-      INSERT INTO users (email, password)
-      VALUES ($1, $2)
-    `;
-    await pool.query(query, [email, hashedPassword]);
+    const newUser = await prisma.user.create({
+      data: {
+        email,
+        password: hashedPassword,
+      },
+    });
 
     return NextResponse.json(
-      { message: "User created successfully" },
+      { id: newUser.id, email: newUser.email },
       { status: 201 }
     );
   } catch (error: any) {
-    let status = 500;
-    let message = "Internal server error";
-
-    // O driver pg para PostgreSQL lança um erro com um `code` específico para violações de constraint unique.
-    if (error.code === '23505') { 
-      status = 409;
-      message = "User with this email already exists";
+    // Código de erro do Prisma para violação de constraint unique
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      return NextResponse.json(
+        { message: "User with this email already exists" },
+        { status: 409 }
+      );
     }
-
-    return NextResponse.json({ message }, { status });
+    
+    console.error("Registration error:", error);
+    return NextResponse.json(
+      { message: "An unexpected error occurred" },
+      { status: 500 }
+    );
   }
 } 

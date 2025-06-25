@@ -47,14 +47,21 @@ const processQueue = (error: Error | null, token: string | null = null) => {
 apiClient.interceptors.response.use(
   response => response,
   async (error: AxiosError) => {
-    const originalRequest = error.config;
+    const originalRequest = error.config as (import("axios").AxiosRequestConfig & { _retry?: boolean });
 
     // Se o erro não for 401 ou não houver config, rejeita
     if (error.response?.status !== 401 || !originalRequest) {
       return Promise.reject(error);
     }
 
-    // Evita loop infinito se a rota de refresh falhar com 401
+    // IGNORAR O INTERCEPTOR PARA A ROTA DE LOGIN
+    // Se o erro 401 veio da tentativa de login, é um erro de "credenciais inválidas"
+    // e deve ser tratado pelo formulário, não pelo refresh de token.
+    if (originalRequest.url === '/auth/login') {
+      return Promise.reject(error);
+    }
+
+    // Evita loop infinito se a rota de refresh também falhar com 401
     if (originalRequest.url === '/auth/refresh') {
         // Futuramente, chamar a função de logout aqui
         console.error("Refresh token is invalid. Logging out.");
@@ -68,7 +75,9 @@ apiClient.interceptors.response.use(
         failedQueue.push({ resolve, reject });
       })
       .then(token => {
-        originalRequest.headers['Authorization'] = 'Bearer ' + token;
+        if (originalRequest.headers) {
+          originalRequest.headers['Authorization'] = 'Bearer ' + token;
+        }
         return apiClient(originalRequest);
       })
       .catch(err => {
@@ -83,7 +92,9 @@ apiClient.interceptors.response.use(
       const newAccessToken = data.accessToken;
       setToken(newAccessToken);
       apiClient.defaults.headers.common['Authorization'] = `Bearer ${newAccessToken}`;
-      originalRequest.headers['Authorization'] = `Bearer ${newAccessToken}`;
+      if (originalRequest.headers) {
+        originalRequest.headers['Authorization'] = `Bearer ${newAccessToken}`;
+      }
       
       processQueue(null, newAccessToken);
       return apiClient(originalRequest);

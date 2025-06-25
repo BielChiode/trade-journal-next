@@ -29,6 +29,7 @@ export interface Position {
   average_exit_price?: number;
   setup?: string;
   observations?: string;
+  operations: Operation[];
 }
 
 export interface Operation {

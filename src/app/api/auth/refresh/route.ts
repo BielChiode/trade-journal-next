@@ -1,38 +1,32 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { verifyRefreshToken, createAccessToken } from "@/lib/jwt";
-import pool from "@/lib/db/database";
-import { User } from "@/types/auth";
+import prisma from "@/lib/prisma";
 
-export async function POST(req: NextRequest) {
-  const cookieStore = await cookies();
-  const refreshToken = cookieStore.get("refreshToken")?.value;
+export async function POST(request: NextRequest) {
+  const refreshToken = request.cookies.get("refreshToken")?.value;
 
   if (!refreshToken) {
     return NextResponse.json({ message: "Refresh token not found" }, { status: 401 });
   }
 
   const payload = verifyRefreshToken(refreshToken);
+
   if (!payload) {
-    return NextResponse.json({ message: "Invalid refresh token" }, { status: 401 });
+    return NextResponse.json({ message: "Invalid refresh token" }, { status: 403 });
   }
 
-  const { rows } = await pool.query<User>("SELECT * FROM users WHERE id = $1", [
-    payload.id,
-  ]);
-  const user = rows[0];
+  const user = await prisma.user.findUnique({
+    where: { id: payload.id },
+  });
 
-  if (!user || user.token_version !== payload.tokenVersion) {
-    const response = NextResponse.json(
-      { message: "Invalid refresh token" },
-      { status: 401 }
-    );
-    // Limpa o cookie inválido
-    response.cookies.delete("refreshToken");
-    return response;
+  if (!user) {
+    return NextResponse.json({ message: "User not found" }, { status: 403 });
   }
 
-  // Se o refresh token é válido, cria um novo access token
+  if (user.token_version !== payload.tokenVersion) {
+    return NextResponse.json({ message: "Token has been revoked" }, { status: 403 });
+  }
+
   const newAccessToken = createAccessToken(user);
 
   return NextResponse.json({ accessToken: newAccessToken });

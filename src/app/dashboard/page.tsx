@@ -112,10 +112,12 @@ const DashboardPage: React.FC = () => {
   }, [positions, statusFilter, tickerSearch, resultFilter]);
 
   const totalProfit = useMemo(() => {
-    return positions.reduce(
-      (acc, pos) => acc + (pos.total_realized_pnl ?? 0),
-      0
-    );
+    return positions
+      .filter(pos => pos.status === 'Closed')
+      .reduce(
+        (acc, pos) => acc + (pos.total_realized_pnl ?? 0),
+        0
+      );
   }, [positions]);
 
   const isFilterActive =
