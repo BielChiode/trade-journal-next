@@ -39,6 +39,8 @@ const DashboardMetrics: React.FC<DashboardMetricsProps> = ({
     const averageProfit = winningTrades > 0 ? closedPositions.filter(p => p.total_realized_pnl > 0).reduce((acc, p) => acc + p.total_realized_pnl, 0) / winningTrades : 0;
     const averageLoss = losingTrades > 0 ? closedPositions.filter(p => p.total_realized_pnl < 0).reduce((acc, p) => acc + p.total_realized_pnl, 0) / losingTrades : 0;
 
+    const payoffRatio = averageLoss !== 0 ? Math.abs(averageProfit / averageLoss) : 0;
+
     const handleCapitalEdit = () => {
         if (isEditingCapital) {
             const newCapital = tempCapital;
@@ -54,7 +56,7 @@ const DashboardMetrics: React.FC<DashboardMetricsProps> = ({
         { title: 'Posições Encerradas', value: totalTrades },
         { title: 'Taxa de Acerto', value: formatPercentage(winRate) },
         { title: 'Lucro Médio', value: formatCurrency(averageProfit) },
-        { title: 'Prejuízo Médio', value: formatCurrency(averageLoss) },
+        { title: 'Payoff Ratio', value: payoffRatio.toFixed(2) },
     ];
     
     const currentCapital = initialCapital + totalProfit;

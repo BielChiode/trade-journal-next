@@ -19,9 +19,11 @@ export async function GET(request: NextRequest) {
           },
         },
       },
-      orderBy: {
-        initial_entry_date: 'desc',
-      }
+      orderBy: [
+        { status: 'asc' },
+        { last_exit_date: 'desc' },
+        { initial_entry_date: 'desc' },
+      ]
     });
 
     return NextResponse.json(positions);

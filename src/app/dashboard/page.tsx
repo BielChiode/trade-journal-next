@@ -15,7 +15,7 @@ import { Position } from "@/types/trade";
 import { useAuth } from "@/contexts/AuthContext";
 import DashboardHeader from "./components/DashboardHeader";
 import DashboardMetrics from "./components/DashboardMetrics";
-import TradesHistory from "./components/TradesHistory";
+import PositionsHistory from "./components/PositionsHistory";
 import ConfirmationModal from "@/components/ui/ConfirmationModal";
 import Loader from "@/components/ui/Loader";
 import PositionForm, { PositionFormData } from "@/components/PositionForm";
@@ -65,6 +65,14 @@ const DashboardPage: React.FC = () => {
     try {
       const response = await getPositions();
       setPositions(response);
+
+      setSelectedPosition((currentSelected) => {
+        if (!currentSelected) return null;
+        const updatedPosition = response.find(
+          (p) => p.id === currentSelected.id
+        );
+        return updatedPosition || null;
+      });
     } catch (error) {
       console.error("Erro ao carregar posições:", error);
     }
@@ -113,11 +121,8 @@ const DashboardPage: React.FC = () => {
 
   const totalProfit = useMemo(() => {
     return positions
-      .filter(pos => pos.status === 'Closed')
-      .reduce(
-        (acc, pos) => acc + (pos.total_realized_pnl ?? 0),
-        0
-      );
+      .filter((pos) => pos.status === "Closed")
+      .reduce((acc, pos) => acc + (pos.total_realized_pnl ?? 0), 0);
   }, [positions]);
 
   const isFilterActive =
@@ -180,11 +185,6 @@ const DashboardPage: React.FC = () => {
     setSelectedPosition(null);
   };
 
-  const handleUpdateAndClose = () => {
-    loadPositions();
-    handleCloseDetailsModal();
-  };
-
   return (
     <>
       <DashboardHeader logout={logout} />
@@ -194,7 +194,7 @@ const DashboardPage: React.FC = () => {
           <h2 className="text-xl sm:text-2xl font-bold">Visão Geral</h2>
           <Button onClick={handleOpenNewTradeModal}>
             <PlusCircle className="mr-2 h-4 w-4" />
-            Adicionar Trade
+            Adicionar Posição
           </Button>
         </div>
 
@@ -209,7 +209,7 @@ const DashboardPage: React.FC = () => {
           setTempCapital={setTempCapital}
         />
 
-        <TradesHistory
+        <PositionsHistory
           positions={filteredPositions}
           onOpenDetails={handleOpenDetailsModal}
           onOpenNewTradeModal={handleOpenNewTradeModal}
@@ -241,7 +241,7 @@ const DashboardPage: React.FC = () => {
         <PositionDetailsModal
           position={selectedPosition}
           onClose={handleCloseDetailsModal}
-          onUpdate={handleUpdateAndClose}
+          onUpdate={loadPositions}
         />
       )}
 

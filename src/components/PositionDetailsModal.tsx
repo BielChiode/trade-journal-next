@@ -9,6 +9,7 @@ import {
   ArrowUp,
   ArrowDown,
   PlusCircle,
+  CircleMinus,
 } from "lucide-react";
 import Modal from "./ui/Modal";
 import PositionForm, { PositionFormData } from "./PositionForm";
@@ -44,19 +45,24 @@ const PositionDetailsModal: React.FC<PositionDetailsModalProps> = ({
   const [isIncrementModalOpen, setIsIncrementModalOpen] = useState(false);
   const [isPartialExitModalOpen, setIsPartialExitModalOpen] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const refreshPositionDetails = () => {
+    setIsLoading(true);
+    getOperationsByPositionId(position.id)
+      .then((operationsData) => {
+        setOperations(operationsData || []);
+      })
+      .catch((error) => {
+        console.error("Erro ao buscar operações:", error);
+        setOperations([]);
+      })
+      .finally(() => setIsLoading(false));
+  }
 
   useEffect(() => {
     if (position) {
-      setIsLoading(true);
-      getOperationsByPositionId(position.id)
-        .then((operationsData) => {
-          setOperations(operationsData || []);
-        })
-        .catch((error) => {
-          console.error("Erro ao buscar operações:", error);
-          setOperations([]);
-        })
-        .finally(() => setIsLoading(false));
+      refreshPositionDetails();
     }
   }, [position]);
 
@@ -71,13 +77,16 @@ const PositionDetailsModal: React.FC<PositionDetailsModalProps> = ({
   };
 
   const handleDelete = async () => {
+    setIsDeleting(true);
     try {
       await deletePosition(position.id);
       setIsDeleteConfirmOpen(false);
-      onClose(); // Fecha o modal de detalhes
-      onUpdate(); // Atualiza a lista no dashboard
+      onClose();
+      onUpdate();
     } catch (error) {
       console.error("Erro ao deletar posição:", error);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -88,6 +97,7 @@ const PositionDetailsModal: React.FC<PositionDetailsModalProps> = ({
   }) => {
     await incrementPosition(position.id, data);
     onUpdate();
+    refreshPositionDetails();
     setIsIncrementModalOpen(false);
   };
 
@@ -98,30 +108,46 @@ const PositionDetailsModal: React.FC<PositionDetailsModalProps> = ({
   }) => {
     await executePartialExit(position.id, data);
     onUpdate();
+    refreshPositionDetails();
     setIsPartialExitModalOpen(false);
   };
 
   const isProfit = position.total_realized_pnl >= 0;
-  const isEditRestricted = position.status === 'Closed' || operations.length > 1;
+  const isEditRestricted =
+    position.status === "Closed" || operations.length > 1;
 
   // Lógica para calcular os valores derivados para posições fechadas
   const closedPositionMetrics = React.useMemo(() => {
-    if (position.status !== 'Closed' || operations.length === 0) {
+    if (position.status !== "Closed" || operations.length === 0) {
       return { total_quantity: 0, average_exit_price: 0 };
     }
 
-    const entryOperations = operations.filter(op => op.operation_type === 'Entry' || op.operation_type === 'Increment');
-    const exitOperations = operations.filter(op => op.operation_type === 'PartialExit');
+    const entryOperations = operations.filter(
+      (op) => op.operation_type === "Entry" || op.operation_type === "Increment"
+    );
+    const exitOperations = operations.filter(
+      (op) => op.operation_type === "PartialExit"
+    );
 
-    const total_quantity = entryOperations.reduce((acc, op) => acc + op.quantity, 0);
-    
+    const total_quantity = entryOperations.reduce(
+      (acc, op) => acc + op.quantity,
+      0
+    );
+
     let average_exit_price = 0;
     if (exitOperations.length > 0) {
-      const totalExitValue = exitOperations.reduce((acc, op) => acc + (op.price * op.quantity), 0);
-      const totalExitQuantity = exitOperations.reduce((acc, op) => acc + op.quantity, 0);
-      average_exit_price = totalExitQuantity > 0 ? totalExitValue / totalExitQuantity : 0;
+      const totalExitValue = exitOperations.reduce(
+        (acc, op) => acc + op.price * op.quantity,
+        0
+      );
+      const totalExitQuantity = exitOperations.reduce(
+        (acc, op) => acc + op.quantity,
+        0
+      );
+      average_exit_price =
+        totalExitQuantity > 0 ? totalExitValue / totalExitQuantity : 0;
     }
-    
+
     return { total_quantity, average_exit_price };
   }, [position, operations]);
 
@@ -130,7 +156,10 @@ const PositionDetailsModal: React.FC<PositionDetailsModalProps> = ({
     const formData = {
       ...position,
       // Se a posição estiver fechada, usamos a quantidade total calculada
-      quantity: position.status === 'Closed' ? closedPositionMetrics.total_quantity : position.current_quantity,
+      quantity:
+        position.status === "Closed"
+          ? closedPositionMetrics.total_quantity
+          : position.current_quantity,
       // Convertemos o preço médio para número
       price: position.average_entry_price,
       // Formatamos a data
@@ -210,6 +239,18 @@ const PositionDetailsModal: React.FC<PositionDetailsModalProps> = ({
                   const isIncrement = op.operation_type === "Increment";
                   const profit = op.result && op.result > 0;
 
+                  let percentageResult = 0;
+                  if (
+                    !isIncrement &&
+                    op.result != null &&
+                    op.quantity > 0 &&
+                    position.average_entry_price > 0
+                  ) {
+                    const pnlPerShare = op.result / op.quantity;
+                    percentageResult =
+                      pnlPerShare / position.average_entry_price;
+                  }
+
                   return (
                     <div
                       key={op.id}
@@ -237,14 +278,27 @@ const PositionDetailsModal: React.FC<PositionDetailsModalProps> = ({
                         </div>
                       </div>
                       {!isIncrement && op.result != null && (
-                        <span
-                          className={`font-semibold ${
-                            profit ? "text-green-600" : "text-red-600"
-                          }`}
-                        >
-                          {profit ? "+" : ""}
-                          {formatCurrency(op.result)}
-                        </span>
+                        <div className="text-right">
+                          <span
+                            className={`font-semibold ${
+                              profit ? "text-green-600" : "text-red-600"
+                            }`}
+                          >
+                            {profit ? "+" : ""}
+                            {formatCurrency(op.result)}
+                          </span>
+                          <p
+                            className={`text-xs font-medium ${
+                              profit ? "text-green-500/90" : "text-red-500/90"
+                            }`}
+                          >
+                            {profit ? "+" : ""}
+                            {percentageResult.toLocaleString("pt-BR", {
+                              style: "percent",
+                              minimumFractionDigits: 2,
+                            })}
+                          </p>
+                        </div>
                       )}
                     </div>
                   );
@@ -353,7 +407,7 @@ const PositionDetailsModal: React.FC<PositionDetailsModalProps> = ({
                 onClick={() => setIsPartialExitModalOpen(true)}
                 className="w-full"
               >
-                <TrendingDown className="mr-2 h-4 w-4" /> Saída Parcial
+                <CircleMinus className="mr-2 h-4 w-4" /> Registrar Saída
               </Button>
               <Button
                 variant="outline"
@@ -418,6 +472,7 @@ const PositionDetailsModal: React.FC<PositionDetailsModalProps> = ({
           onConfirm={handleDelete}
           title="Confirmar Exclusão"
           message="Tem certeza de que deseja excluir esta posição? Esta ação não pode ser desfeita."
+          loading={isDeleting}
         />
       )}
     </>
