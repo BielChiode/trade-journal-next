@@ -5,11 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "next dev --turbopack",
-    "build:vercel": "tsx scripts/init-db.ts && next build",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "db:init": "tsx --env-file .env.local scripts/init-db.ts"
+    "db:init": "tsx --env-file .env.local scripts/init-db.ts",
+    "postinstall": "tsx scripts/init-db.ts"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.14",
