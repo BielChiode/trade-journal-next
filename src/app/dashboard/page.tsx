@@ -65,10 +65,8 @@ const DashboardPage: React.FC = () => {
     try {
       const response = await getPositions();
       setPositions(
-        response.data.sort((a, b) => {
-          const dateA = new Date(a.initial_entry_date).getTime();
-          const dateB = new Date(b.initial_entry_date).getTime();
-          return dateB - dateA;
+        response.sort((a, b) => {
+          return b.initial_entry_date.getTime() - a.initial_entry_date.getTime();
         })
       );
     } catch (error) {

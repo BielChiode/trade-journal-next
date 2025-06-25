@@ -66,12 +66,7 @@ export async function DELETE(
 
     const positionId = parseInt(params.id, 10);
     
-    await new Promise<void>((resolve, reject) => {
-      PositionModel.delete(positionId, userId, (err) => {
-        if (err) return reject(err);
-        resolve();
-      });
-    });
+    await PositionModel.delete(positionId, userId);
 
     return NextResponse.json({ message: "Position deleted successfully" }, { status: 200 });
   } catch (error: any) {

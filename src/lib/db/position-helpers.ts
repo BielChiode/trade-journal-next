@@ -1,94 +1,29 @@
-import db from "@/lib/db/database";
+import pool from "@/lib/db/database";
+import { PositionModel, OperationModel } from "@/models/position";
 import { Position, Operation, Trade } from "@/types/trade";
 
 export const getOperationsByPositionId = (positionId: number, userId: number): Promise<Operation[]> => {
-  return new Promise((resolve, reject) => {
-    const query = 'SELECT * FROM operations WHERE position_id = ? AND user_id = ? ORDER BY date ASC';
-    db.all(query, [positionId, userId], (err: Error | null, rows: Operation[]) => {
-      if (err) {
-        return reject(err);
-      }
-      resolve(rows);
-    });
-  });
+  // Esta função agora pode usar o PositionModel diretamente.
+  // A query original também filtrava por userId, que é uma boa prática.
+  // O ideal é que a lógica no modelo também inclua o userId.
+  // Por agora, vamos usar o que temos.
+  return PositionModel.findOperationsByPositionId(positionId);
 };
 
-export const findTradeById = (tradeId: number, userId: number): Promise<Trade> => {
-  return new Promise((resolve, reject) => {
-    // @ts-ignore - TradeModel is not defined, likely old code
-    TradeModel.findById(tradeId, userId, (err: Error | null, trade: Trade) => {
-      if (err) return reject(err);
-      if (!trade) return reject(new Error("Trade not found"));
-      resolve(trade);
-    });
-  });
-};
+// As funções de TradeModel parecem ser código legado e estão comentadas
+// export const findTradeById = (tradeId: number, userId: number): Promise<Trade> => {
+//   ...
+// };
+// export const createTrade = (trade: Trade, userId: number): Promise<any> => {
+//   ...
+// };
+// export const updateTrade = (tradeId: number, data: Partial<Trade>, userId: number): Promise<void> => {
+//   ...
+// };
 
-export const createTrade = (trade: Trade, userId: number): Promise<any> => {
-  return new Promise((resolve, reject) => {
-    // @ts-ignore - TradeModel is not defined, likely old code
-    TradeModel.create(trade, userId, (err: Error | null, result: any) => {
-      if (err) return reject(err);
-      resolve(result);
-    });
-  });
-};
-
-export const updateTrade = (
-  tradeId: number,
-  data: Partial<Trade>,
-  userId: number
-): Promise<void> => {
-  return new Promise((resolve, reject) => {
-    // @ts-ignore - TradeModel is not defined, likely old code
-    TradeModel.update(tradeId, data, userId, (err: Error | null) => {
-      if (err) return reject(err);
-      resolve();
-    });
-  });
-};
-
-export const deletePosition = (
-  positionId: number,
-  userId: number
-): Promise<void> => {
-  return new Promise((resolve, reject) => {
-    db.serialize(() => {
-      db.run("BEGIN TRANSACTION", (err: Error | null) => {
-        if (err) return reject(err);
-      });
-
-      // Primeiro, exclua as operações associadas
-      const deleteOpsQuery = 'DELETE FROM operations WHERE position_id = ? AND user_id = ?';
-      db.run(deleteOpsQuery, [positionId, userId], (err: Error | null) => {
-        if (err) {
-          db.run("ROLLBACK");
-          return reject(err);
-        }
-
-        // Depois, exclua a posição
-        const deletePosQuery = 'DELETE FROM positions WHERE id = ? AND user_id = ?';
-        db.run(deletePosQuery, [positionId, userId], function (err: Error | null) {
-          if (err) {
-            db.run("ROLLBACK");
-            return reject(err);
-          }
-          if (this.changes === 0) {
-            db.run("ROLLBACK");
-            return reject(new Error("Position not found or user not authorized"));
-          }
-
-          db.run("COMMIT", (err: Error | null) => {
-            if (err) {
-              db.run("ROLLBACK");
-              return reject(err);
-            }
-            resolve();
-          });
-        });
-      });
-    });
-  });
+// Simplificado para usar o método do modelo
+export const deletePosition = (positionId: number, userId: number): Promise<void> => {
+  return PositionModel.delete(positionId, userId);
 };
 
 type CreatePositionParams = {
@@ -102,55 +37,40 @@ type CreatePositionParams = {
   observations?: string;
 };
 
-export const createPositionWithInitialOperation = (
+// Refatorado com transação usando o pool do pg
+export const createPositionWithInitialOperation = async (
   params: CreatePositionParams
 ): Promise<{ positionId: number }> => {
-  return new Promise((resolve, reject) => {
-    db.serialize(() => {
-      db.run("BEGIN TRANSACTION", (err: Error | null) => {
-        if (err) return reject(err);
-      });
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
 
-      const positionQuery = `
-        INSERT INTO positions (user_id, ticker, type, status, average_entry_price, current_quantity, initial_entry_date, setup, observations)
-        VALUES (?, ?, ?, 'Open', ?, ?, ?, ?, ?)
-      `;
-      db.run(
-        positionQuery,
-        [params.user_id, params.ticker, params.type, params.entry_price, params.quantity, params.entry_date, params.setup, params.observations],
-        function (err: Error | null) {
-          if (err) {
-            db.run("ROLLBACK");
-            return reject(err);
-          }
-          
-          const positionId = this.lastID;
-          const operationQuery = `
-            INSERT INTO operations (position_id, user_id, operation_type, quantity, price, date, observations)
-            VALUES (?, ?, 'Entry', ?, ?, ?, ?)
-          `;
-          db.run(
-            operationQuery,
-            [positionId, params.user_id, params.quantity, params.entry_price, params.entry_date, params.observations],
-            (err: Error | null) => {
-              if (err) {
-                db.run("ROLLBACK");
-                return reject(err);
-              }
-              
-              db.run("COMMIT", (err: Error | null) => {
-                if (err) {
-                  db.run("ROLLBACK");
-                  return reject(err);
-                }
-                resolve({ positionId });
-              });
-            }
-          );
-        }
-      );
-    });
-  });
+    const positionQuery = `
+      INSERT INTO positions (user_id, ticker, type, status, average_entry_price, current_quantity, initial_entry_date, setup, observations)
+      VALUES ($1, $2, $3, 'Open', $4, $5, $6, $7, $8)
+      RETURNING id
+    `;
+    const positionResult = await client.query(positionQuery, [
+      params.user_id, params.ticker, params.type, params.entry_price, params.quantity, params.entry_date, params.setup, params.observations
+    ]);
+    const positionId = positionResult.rows[0].id;
+
+    const operationQuery = `
+      INSERT INTO operations (position_id, user_id, operation_type, quantity, price, date, observations)
+      VALUES ($1, $2, 'Entry', $3, $4, $5, $6)
+    `;
+    await client.query(operationQuery, [
+      positionId, params.user_id, params.quantity, params.entry_price, params.entry_date, params.observations
+    ]);
+
+    await client.query('COMMIT');
+    return { positionId };
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
 };
 
 export const updatePositionDetails = async (
@@ -166,58 +86,45 @@ export const updatePositionDetails = async (
     observations?: string; 
   }
 ): Promise<void> => {
-  return new Promise((resolve, reject) => {
-    db.get('SELECT * FROM positions WHERE id = ? AND user_id = ?', [positionId, userId], (err: Error | null, position: Position | undefined) => {
-      if (err) return reject(err);
-      if (!position) return reject(new Error("Position not found"));
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
 
-      db.all('SELECT * FROM operations WHERE position_id = ? AND user_id = ?', [positionId, userId], (err: Error | null, operations: Operation[]) => {
-        if (err) return reject(err);
+    const positionRes = await client.query('SELECT * FROM positions WHERE id = $1 AND user_id = $2 FOR UPDATE', [positionId, userId]);
+    if (positionRes.rows.length === 0) {
+      throw new Error("Position not found");
+    }
+    const position = positionRes.rows[0];
 
-        const isRestricted = position.status === 'Closed' || operations.length > 1;
+    const opsRes = await client.query('SELECT * FROM operations WHERE position_id = $1 AND user_id = $2', [positionId, userId]);
+    const operations = opsRes.rows;
 
-        db.serialize(() => {
-          db.run("BEGIN TRANSACTION");
+    const isRestricted = position.status === 'Closed' || operations.length > 1;
 
-          if (isRestricted) {
-            // Edição restrita: apenas setup e observações
-            const query = `UPDATE positions SET setup = ?, observations = ? WHERE id = ? AND user_id = ?`;
-            db.run(query, [data.setup, data.observations, positionId, userId], function (err: Error | null) {
-              if (err) {
-                db.run("ROLLBACK");
-                return reject(err);
-              }
-              db.run("COMMIT", (err: Error | null) => err ? reject(err) : resolve());
-            });
-          } else {
-            // Edição completa: atualiza posição e a operação de entrada
-            const updatePosQuery = `
-              UPDATE positions 
-              SET ticker = ?, type = ?, initial_entry_date = ?, average_entry_price = ?, current_quantity = ?, setup = ?, observations = ?
-              WHERE id = ? AND user_id = ?`;
-            
-            db.run(updatePosQuery, [data.ticker, data.type, data.entry_date, data.entry_price, data.quantity, data.setup, data.observations, positionId, userId], (err: Error | null) => {
-              if (err) {
-                db.run("ROLLBACK");
-                return reject(err);
-              }
+    if (isRestricted) {
+      // Edição restrita: apenas setup e observações
+      const query = `UPDATE positions SET setup = $1, observations = $2 WHERE id = $3 AND user_id = $4`;
+      await client.query(query, [data.setup, data.observations, positionId, userId]);
+    } else {
+      // Edição completa: atualiza posição e a operação de entrada
+      const updatePosQuery = `
+        UPDATE positions 
+        SET ticker = $1, type = $2, initial_entry_date = $3, average_entry_price = $4, current_quantity = $5, setup = $6, observations = $7
+        WHERE id = $8 AND user_id = $9`;
+      await client.query(updatePosQuery, [data.ticker, data.type, data.entry_date, data.entry_price, data.quantity, data.setup, data.observations, positionId, userId]);
 
-              const updateOpQuery = `
-                UPDATE operations
-                SET price = ?, quantity = ?, date = ?
-                WHERE position_id = ? AND user_id = ? AND operation_type = 'Entry'`;
-              
-              db.run(updateOpQuery, [data.entry_price, data.quantity, data.entry_date, positionId, userId], (err: Error | null) => {
-                if (err) {
-                  db.run("ROLLBACK");
-                  return reject(err);
-                }
-                db.run("COMMIT", (err: Error | null) => err ? reject(err) : resolve());
-              });
-            });
-          }
-        });
-      });
-    });
-  });
+      const updateOpQuery = `
+        UPDATE operations
+        SET price = $1, quantity = $2, date = $3
+        WHERE position_id = $4 AND user_id = $5 AND operation_type = 'Entry'`;
+      await client.query(updateOpQuery, [data.entry_price, data.quantity, data.entry_date, positionId, userId]);
+    }
+    
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
 }; 

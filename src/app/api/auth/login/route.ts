@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import db from "@/lib/db/database";
+import pool from "@/lib/db/database";
 import { User } from "@/types/auth";
 
 
@@ -18,18 +18,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const query = "SELECT * FROM users WHERE email = ?";
-
-    const user = await new Promise<User | undefined>((resolve, reject) => {
-        db.get(query, [email], (err, row: User) => {
-          if (err) {
-            reject(err);
-          } else {
-            resolve(row);
-          }
-        });
-      });
-  
+    const query = "SELECT * FROM users WHERE email = $1";
+    const { rows } = await pool.query<User>(query, [email]);
+    const user = rows[0];
 
     if (!user) {
       return NextResponse.json(
@@ -53,6 +44,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ token });
   } catch (error) {
+    console.error("Login error:", error);
     return NextResponse.json(
       { message: "Internal server error" },
       { status: 500 }

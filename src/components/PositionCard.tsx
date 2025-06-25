@@ -1,12 +1,7 @@
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
-import { cn } from "@/lib/utils";
-import {
-  TrendingDown,
-  TrendingUp,
-  Clock,
-  CheckCircle,
-} from "lucide-react";
+import { cn, formatDate } from "@/lib/utils";
+import { TrendingDown, TrendingUp, Clock, CheckCircle } from "lucide-react";
 import { Position } from "../types/trade";
 
 interface PositionCardProps {
@@ -22,15 +17,10 @@ const PositionCard: React.FC<PositionCardProps> = ({ position, onClick }) => {
     return `R$ ${Number(value).toFixed(2)}`;
   };
 
-  const formatDate = (dateString: string | undefined | null) => {
-    if (!dateString) return "N/A";
-    return new Date(dateString).toLocaleDateString("pt-BR", {
-      timeZone: "UTC",
-    });
-  };
-
   const displayDate = formatDate(
-    position.status === 'Open' ? position.initial_entry_date : position.last_exit_date
+    position.status === "Open"
+      ? position.initial_entry_date
+      : position.last_exit_date
   );
 
   return (
@@ -41,9 +31,9 @@ const PositionCard: React.FC<PositionCardProps> = ({ position, onClick }) => {
       <div className="flex-grow">
         <CardHeader className="pb-2 sm:pb-3">
           <CardTitle className="flex justify-between items-start gap-2 mb-4">
-              <span className="text-base sm:text-lg font-bold truncate">
-                {position.ticker}
-              </span>
+            <span className="text-base sm:text-lg font-bold truncate">
+              {position.ticker}
+            </span>
             {position.status === "Closed" && (
               <div
                 className={cn(
@@ -53,7 +43,11 @@ const PositionCard: React.FC<PositionCardProps> = ({ position, onClick }) => {
                     : "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400"
                 )}
               >
-                {isProfit ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+                {isProfit ? (
+                  <TrendingUp size={14} />
+                ) : (
+                  <TrendingDown size={14} />
+                )}
                 <span>{formatCurrency(position.total_realized_pnl)}</span>
               </div>
             )}
@@ -73,20 +67,24 @@ const PositionCard: React.FC<PositionCardProps> = ({ position, onClick }) => {
               {position.type === "Buy" ? "Compra" : "Venda"}
             </span>
           </div>
-          {position.status === 'Closed' ? (
+          {position.status === "Closed" ? (
             <>
               <div className="flex justify-between items-center text-xs sm:text-sm">
                 <span className="text-muted-foreground">Qtd. Total:</span>
                 <span className="font-medium">{position.total_quantity}</span>
               </div>
               <div className="flex justify-between items-center text-xs sm:text-sm">
-                <span className="text-muted-foreground">Preço Médio Entrada:</span>
+                <span className="text-muted-foreground">
+                  Preço Médio Entrada:
+                </span>
                 <span className="font-medium">
                   {formatCurrency(position.average_entry_price)}
                 </span>
               </div>
               <div className="flex justify-between items-center text-xs sm:text-sm">
-                <span className="text-muted-foreground">Preço Médio Saída:</span>
+                <span className="text-muted-foreground">
+                  Preço Médio Saída:
+                </span>
                 <span className="font-medium">
                   {formatCurrency(position.average_exit_price)}
                 </span>
@@ -99,7 +97,9 @@ const PositionCard: React.FC<PositionCardProps> = ({ position, onClick }) => {
                 <span className="font-medium">{position.current_quantity}</span>
               </div>
               <div className="flex justify-between items-center text-xs sm:text-sm">
-                <span className="text-muted-foreground">Preço Médio Entrada:</span>
+                <span className="text-muted-foreground">
+                  Preço Médio Entrada:
+                </span>
                 <span className="font-medium">
                   {formatCurrency(position.average_entry_price)}
                 </span>
@@ -119,9 +119,14 @@ const PositionCard: React.FC<PositionCardProps> = ({ position, onClick }) => {
           )}
         >
           <div className="flex items-center gap-2">
-            {position.status === "Open" ? <Clock size={12} /> : <CheckCircle size={12} />}
+            {position.status === "Open" ? (
+              <Clock size={12} />
+            ) : (
+              <CheckCircle size={12} />
+            )}
             <span>
-              Posição {position.status.toLowerCase() === "open" ? "Aberta" : "Fechada"}
+              Posição{" "}
+              {position.status.toLowerCase() === "open" ? "Aberta" : "Fechada"}
             </span>
           </div>
           <span className="text-xs">{displayDate}</span>

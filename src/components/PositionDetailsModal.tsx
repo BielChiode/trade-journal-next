@@ -49,8 +49,13 @@ const PositionDetailsModal: React.FC<PositionDetailsModalProps> = ({
     if (position) {
       setIsLoading(true);
       getOperationsByPositionId(position.id)
-        .then((response) => setOperations(response.data))
-        .catch((error) => console.error("Erro ao buscar operações:", error))
+        .then((operationsData) => {
+          setOperations(operationsData || []);
+        })
+        .catch((error) => {
+          console.error("Erro ao buscar operações:", error);
+          setOperations([]);
+        })
         .finally(() => setIsLoading(false));
     }
   }, [position]);

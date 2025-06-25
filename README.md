@@ -84,8 +84,8 @@ trade-journal-next/
 - `GET /api/trades`: Retorna todos os trades do usuário autenticado.
 - `POST /api/trades`: Adiciona uma nova posição.
 - `PUT /api/trades/[id]`: Atualiza uma posição (trade principal).
-- `DELETE /api/trades/[id]`: Deleta uma posição completa (incluindo parciais e incrementos).
-- `POST /api/trades/[id]/partial-exit`: Registra uma saída parcial de uma posição.
-- `POST /api/trades/[id]/increment-position`: Registra um incremento em uma posição.
+- `DELETE /api/trades/[id]`: Deleta uma posição completa.
+- `POST /api/positions/[id]/partial-exit`: Registra uma saída parcial de uma posição.
+- `POST /api/positions/[id]/increment`: Registra um incremento em uma posição.
 - `POST /api/auth/login`: Autentica um usuário.
 - `POST /api/auth/register`: Registra um novo usuário. 
