@@ -4,6 +4,9 @@ pg.types.setTypeParser(1700, (val) => parseFloat(val));
 
 const { Pool } = pg;
 
+// Linha de diagnóstico para o build da Vercel
+console.log(`[DB] NODE_ENV: ${process.env.NODE_ENV}, POSTGRES_URL exists: ${!!process.env.POSTGRES_URL}`);
+
 const pool = new Pool({
   connectionString: process.env.POSTGRES_URL,
   ssl:
