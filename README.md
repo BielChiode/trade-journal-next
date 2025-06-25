@@ -26,12 +26,13 @@ Este projeto é uma re-implementação e modernização de um diário de trades,
 - **Frontend**: React
 - **UI**: Tailwind CSS, shadcn/ui, Lucide React (ícones)
 - **Banco de Dados**: PostgreSQL
+- **ORM**: Prisma
 - **Ambiente de Desenvolvimento**: Docker
 - **Comunicação com API**: Axios
 
 ## Rodando Localmente
 
-Para executar o projeto em seu ambiente de desenvolvimento, é necessário ter o **Docker** e o **Docker Compose** instalados.
+Para executar o projeto em seu ambiente de desenvolvimento, é necessário ter o **Docker** e o **Node.js/Yarn** instalados.
 
 1.  **Clone o repositório:**
     ```bash
@@ -45,9 +46,9 @@ Para executar o projeto em seu ambiente de desenvolvimento, é necessário ter o
     ```
     
 3.  **Configure as Variáveis de Ambiente:**
-    Crie uma cópia do arquivo `.env.example` (ou crie um novo) e renomeie para `.env.local`. Ele deve conter:
-    ```
-    POSTGRES_URL="postgresql://user:password@localhost:5432/trade_journal?sslmode=disable"
+    Crie um arquivo chamado `.env.local` na raiz do projeto. Ele será usado para a conexão com o banco de dados do Docker.
+    ```env
+    DATABASE_URL="postgresql://user:password@localhost:5432/trade_journal?sslmode=disable"
     JWT_SECRET="segredo-super-secreto-para-desenvolvimento-local"
     ```
 
@@ -57,10 +58,10 @@ Para executar o projeto em seu ambiente de desenvolvimento, é necessário ter o
     docker-compose up -d
     ```
 
-5.  **Inicialize o Banco de Dados:**
-    Este comando executará um script para criar as tabelas necessárias na sua base de dados local.
+5.  **Aplique as Migrações do Banco de Dados:**
+    Este comando executará as migrações do Prisma para criar as tabelas na sua base de dados local.
     ```bash
-    yarn db:init
+    yarn prisma:migrate
     ```
 
 6.  **Inicie o Servidor de Desenvolvimento:**
@@ -69,43 +70,49 @@ Para executar o projeto em seu ambiente de desenvolvimento, é necessário ter o
     ```
     Abra [http://localhost:3000](http://localhost:3000) no seu navegador para ver a aplicação.
 
+### Comandos Úteis do Prisma (Local)
+
+- **`yarn prisma:studio`**: Abre uma interface gráfica no navegador para visualizar e editar os dados do seu banco de dados local.
+- **`yarn prisma:reset`**: Limpa completamente seu banco de dados local e aplica as migrações novamente. Útil para começar do zero.
+
 ## Deploy na Vercel
 
 A aplicação está pronta para deploy na Vercel.
 
 1.  **Conecte seu repositório** a um novo projeto na Vercel.
-2.  **Crie um Banco de Dados Vercel Postgres** na aba "Storage" e conecte-o ao seu projeto. Isso irá configurar automaticamente a variável de ambiente `POSTGRES_URL` em produção.
+2.  **Crie um Banco de Dados Vercel Postgres** na aba "Storage" e conecte-o ao seu projeto. Isso irá configurar automaticamente a variável de ambiente `DATABASE_URL` em produção.
 3.  **Adicione a variável `JWT_SECRET`** nas configurações de ambiente do projeto na Vercel com um valor seguro.
-4.  Após o primeiro deploy, o banco de dados estará vazio. Será necessário executar a inicialização das tabelas.
-    
+4.  Faça o deploy. O script `postinstall` irá executar `prisma generate` automaticamente, garantindo que o cliente do Prisma esteja otimizado para o ambiente da Vercel.
+
 ## Estrutura do Projeto
 
 O projeto utiliza a estrutura do App Router do Next.js:
 
 ```
 trade-journal-next/
+├── prisma/               # Schema e migrações do Prisma
 ├── src/
 │   ├── app/
 │   │   ├── api/          # Rotas da API (backend)
 │   │   ├── dashboard/    # Página principal da aplicação
 │   │   └── ...
 │   ├── components/       # Componentes React reutilizáveis
-│   ├── lib/              # Funções utilitárias, helpers de BD
-│   ├── models/           # Modelo de dados (interação com o BD)
+│   ├── contexts/         # Contextos React (ex: Autenticação)
+│   ├── lib/              # Funções utilitárias, cliente Prisma
 │   └── ...
 ├── docker-compose.yml    # Configuração do Docker para o ambiente local
-├── next.config.ts        # Configuração do Next.js
 ├── package.json          # Dependências e scripts
 └── README.md             # Este arquivo
 ```
 
 ## API Endpoints
 
-- `GET /api/trades`: Retorna todos os trades do usuário autenticado.
-- `POST /api/trades`: Adiciona uma nova posição.
-- `PUT /api/trades/[id]`: Atualiza uma posição (trade principal).
-- `DELETE /api/trades/[id]`: Deleta uma posição completa.
+- `GET /api/trades`: Retorna todas as posições do usuário autenticado.
+- `POST /api/trades`: Adiciona uma nova posição com sua operação de entrada.
+- `PUT /api/trades/[id]`: Atualiza o setup e observações de uma posição.
+- `DELETE /api/trades/[id]`: Deleta uma posição e suas operações.
 - `POST /api/positions/[id]/partial-exit`: Registra uma saída parcial de uma posição.
 - `POST /api/positions/[id]/increment`: Registra um incremento em uma posição.
 - `POST /api/auth/login`: Autentica um usuário.
-- `POST /api/auth/register`: Registra um novo usuário. 
+- `POST /api/auth/register`: Registra um novo usuário.
+- `POST /api/auth/refresh`: Gera um novo token de acesso a partir de um refresh token. 
