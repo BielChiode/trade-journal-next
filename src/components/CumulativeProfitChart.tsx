@@ -15,7 +15,7 @@ import {
   ChartData,
   ChartOptions,
 } from "chart.js";
-import { PositionSummary } from "@/lib/tradeUtils";
+import { Position } from "@/types/trade";
 
 ChartJS.register(
   CategoryScale,
@@ -28,7 +28,7 @@ ChartJS.register(
 );
 
 interface CumulativeProfitChartProps {
-  positions: PositionSummary[];
+  positions: Position[];
 }
 
 const CumulativeProfitChart: React.FC<CumulativeProfitChartProps> = ({
@@ -46,20 +46,12 @@ const CumulativeProfitChart: React.FC<CumulativeProfitChartProps> = ({
 
   // Filter for closed positions and sort them by their last exit date
   const sortedPositions = [...positions]
-    .filter((p) => p.status === "Closed")
-    .sort((a, b) => {
-      const lastExitA = Math.max(
-        ...a.tradesInPosition
-          .filter((t) => t.exit_date)
-          .map((t) => new Date(t.exit_date!).getTime())
-      );
-      const lastExitB = Math.max(
-        ...b.tradesInPosition
-          .filter((t) => t.exit_date)
-          .map((t) => new Date(t.exit_date!).getTime())
-      );
-      return lastExitA - lastExitB;
-    });
+    .filter((p) => p.status === "Closed" && p.last_exit_date)
+    .sort(
+      (a, b) =>
+        new Date(a.last_exit_date!).getTime() -
+        new Date(b.last_exit_date!).getTime()
+    );
 
   let cumulativeProfit = 0;
   const chartData: ChartData<"line"> = {
@@ -79,7 +71,7 @@ const CumulativeProfitChart: React.FC<CumulativeProfitChartProps> = ({
   };
 
   sortedPositions.forEach((position, index) => {
-    cumulativeProfit += Number(position.totalRealizedProfit);
+    cumulativeProfit += Number(position.total_realized_pnl);
     chartData.labels!.push(`Trade ${index + 1}`);
     (chartData.datasets[0].data as number[]).push(cumulativeProfit);
   });
@@ -97,14 +89,6 @@ const CumulativeProfitChart: React.FC<CumulativeProfitChartProps> = ({
           font: {
             size: fontSize,
           },
-        },
-      },
-      title: {
-        display: true,
-        text: "Lucro Acumulado",
-        padding: 20,
-        font: {
-          size: fontSize,
         },
       },
       tooltip: {
@@ -156,8 +140,11 @@ const CumulativeProfitChart: React.FC<CumulativeProfitChartProps> = ({
 
   if (sortedPositions.length === 0) {
     return (
-      <div className="bg-card p-4 sm:p-6 rounded-lg border">
-        <div className="flex items-center justify-center h-40 sm:h-64 text-muted-foreground">
+      <div className="bg-card p-4 sm:p-6 rounded-lg border h-full flex flex-col">
+        <div className="mb-4">
+          <h3 className="text-lg font-semibold">Gráfico de Lucro Acumulado</h3>
+        </div>
+        <div className="flex items-center justify-center h-full text-muted-foreground flex-1">
           <p className="text-sm sm:text-base">
             Nenhum trade fechado para exibir o gráfico
           </p>
@@ -167,8 +154,11 @@ const CumulativeProfitChart: React.FC<CumulativeProfitChartProps> = ({
   }
 
   return (
-    <div className="bg-card p-4 sm:p-6 rounded-lg border">
-      <div className="h-40 sm:h-64 md:h-80">
+    <div className="bg-card p-4 sm:p-6 rounded-lg border h-full flex flex-col">
+      <div className="mb-4">
+        <h3 className="text-lg font-semibold">Gráfico de Lucro Acumulado</h3>
+      </div>
+      <div className="h-full flex-1">
         <Line data={chartData} options={options} />
       </div>
     </div>

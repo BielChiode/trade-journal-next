@@ -4,81 +4,55 @@ import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { PlusCircle } from "lucide-react";
 import {
-  getTrades,
-  addTrade,
-  updateTrade,
+  getPositions,
+  addPosition,
   deletePosition,
-  executePartialExit,
-  incrementPosition,
 } from "@/services/tradeService";
 import { Button } from "@/components/ui/Button";
 import Modal from "@/components/ui/Modal";
-import TradeForm from "@/components/TradeForm";
-import TradeDetailsModal from "@/components/TradeDetailsModal";
-import { Trade } from "@/types/trade";
-import PartialExitForm from "@/components/PartialExitForm";
+import PositionDetailsModal from "@/components/PositionDetailsModal";
+import { Position } from "@/types/trade";
 import { useAuth } from "@/contexts/AuthContext";
-import PositionIncrementForm from "@/components/PositionIncrementForm";
-import { PositionSummary, summarizePositions } from "@/lib/tradeUtils";
 import DashboardHeader from "./components/DashboardHeader";
 import DashboardMetrics from "./components/DashboardMetrics";
 import TradesHistory from "./components/TradesHistory";
 import ConfirmationModal from "@/components/ui/ConfirmationModal";
 import Loader from "@/components/ui/Loader";
+import PositionForm, { PositionFormData } from "@/components/PositionForm";
 
 const DashboardPage: React.FC = () => {
   const { logout, isAuthenticated, loading } = useAuth();
   const router = useRouter();
-  const [positions, setPositions] = useState<PositionSummary[]>([]);
+  const [positions, setPositions] = useState<Position[]>([]);
   const [isTradeModalOpen, setIsTradeModalOpen] = useState(false);
-  const [currentTrade, setCurrentTrade] = useState<Trade | null>(null);
-  const [selectedPosition, setSelectedPosition] =
-    useState<PositionSummary | null>(null);
-  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
-  const [startInEditMode, setStartInEditMode] = useState(false);
-  const [isPartialExitModalOpen, setIsPartialExitModalOpen] = useState(false);
-  const [tradeForPartialExit, setTradeForPartialExit] = useState<Trade | null>(
+  const [selectedPosition, setSelectedPosition] = useState<Position | null>(
     null
   );
-  const [initialCapital, setInitialCapital] = useState<number>(0);
-  const [isEditingCapital, setIsEditingCapital] = useState<boolean>(false);
-  const [tempCapital, setTempCapital] = useState<string>("0");
-  const [isIncrementModalOpen, setIsIncrementModalOpen] = useState(false);
-  const [tradeForIncrement, setTradeForIncrement] = useState<Trade | null>(
-    null
-  );
+  const [initialCapital, setInitialCapital] = useState<number>(() => {
+    if (typeof window !== "undefined") {
+      const savedCapital = localStorage.getItem("initialCapital");
+      return savedCapital ? parseFloat(savedCapital) : 10000;
+    }
+    return 10000;
+  });
+  const [isEditingCapital, setIsEditingCapital] = useState(false);
+  const [tempCapital, setTempCapital] = useState<number>(initialCapital);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Filter states with localStorage initialization
   const [statusFilter, setStatusFilter] = useState<"all" | "Open" | "Closed">(
-    () => {
-      if (typeof window === "undefined") return "all";
-      return (
-        (localStorage.getItem("filter_status") as
-          | "all"
-          | "Open"
-          | "Closed"
-          | null) || "all"
-      );
-    }
+    "all"
   );
-  const [tickerSearch, setTickerSearch] = useState(() => {
-    if (typeof window === "undefined") return "";
-    return localStorage.getItem("filter_ticker") || "";
-  });
+  const [tickerSearch, setTickerSearch] = useState("");
   const [resultFilter, setResultFilter] = useState<"all" | "profit" | "loss">(
-    () => {
-      if (typeof window === "undefined") return "all";
-      return (
-        (localStorage.getItem("filter_result") as
-          | "all"
-          | "profit"
-          | "loss"
-          | null) || "all"
-      );
-    }
+    "all"
   );
+
+  useEffect(() => {
+    setStatusFilter((localStorage.getItem("filter_status") as any) || "all");
+    setTickerSearch(localStorage.getItem("filter_ticker") || "");
+    setResultFilter((localStorage.getItem("filter_result") as any) || "all");
+  }, []);
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
@@ -86,66 +60,72 @@ const DashboardPage: React.FC = () => {
     }
   }, [isAuthenticated, loading, router]);
 
-  const loadTrades = useCallback(async () => {
+  const loadPositions = useCallback(async () => {
     if (!isAuthenticated) return;
     try {
-      const response = await getTrades();
-      console.log("response", response.data);
-      const summarized = summarizePositions(response.data);
-      setPositions(summarized);
+      const response = await getPositions();
+      setPositions(
+        response.data.sort((a, b) => {
+          const dateA = new Date(a.initial_entry_date).getTime();
+          const dateB = new Date(b.initial_entry_date).getTime();
+          return dateB - dateA;
+        })
+      );
     } catch (error) {
-      console.error("Erro ao carregar trades:", error);
+      console.error("Erro ao carregar posições:", error);
     }
   }, [isAuthenticated]);
 
   useEffect(() => {
-    loadTrades();
+    loadPositions();
     const savedCapital = localStorage.getItem("initialCapital");
     if (savedCapital) {
       const capitalValue = parseFloat(savedCapital);
       if (!isNaN(capitalValue)) {
         setInitialCapital(capitalValue);
-        setTempCapital(savedCapital);
+        setTempCapital(capitalValue);
       }
     }
-  }, [loadTrades]);
+  }, [loadPositions]);
 
-  // Effect to save filters to cache
   useEffect(() => {
     localStorage.setItem("filter_status", statusFilter);
     localStorage.setItem("filter_ticker", tickerSearch);
     localStorage.setItem("filter_result", resultFilter);
   }, [statusFilter, tickerSearch, resultFilter]);
 
+  useEffect(() => {
+    setTempCapital(initialCapital);
+  }, [initialCapital]);
+
   const filteredPositions = useMemo(() => {
     return positions.filter((position) => {
-      if (statusFilter !== "all" && position.status !== statusFilter) {
+      if (statusFilter !== "all" && position.status !== statusFilter)
         return false;
-      }
       if (
         tickerSearch &&
         !position.ticker.toLowerCase().includes(tickerSearch.toLowerCase())
-      ) {
+      )
         return false;
-      }
       if (
         resultFilter !== "all" &&
-        ((resultFilter === "profit" && position.totalRealizedProfit < 0) ||
-          (resultFilter === "loss" && position.totalRealizedProfit >= 0))
-      ) {
+        ((resultFilter === "profit" && position.total_realized_pnl < 0) ||
+          (resultFilter === "loss" && position.total_realized_pnl >= 0))
+      )
         return false;
-      }
       return true;
     });
   }, [positions, statusFilter, tickerSearch, resultFilter]);
 
-  const totalProfit = useMemo(
-    () =>
-      positions
-        .filter((p) => p.status === "Closed")
-        .reduce((acc, p) => acc + p.totalRealizedProfit, 0),
-    [positions]
-  );
+  const totalProfit = useMemo(() => {
+    return positions.reduce(
+      (acc, pos) => acc + (pos.total_realized_pnl ?? 0),
+      0
+    );
+  }, [positions]);
+
+  const isFilterActive =
+    statusFilter !== "all" || tickerSearch !== "" || resultFilter !== "all";
 
   if (loading || !isAuthenticated) {
     return (
@@ -155,137 +135,29 @@ const DashboardPage: React.FC = () => {
     );
   }
 
-  const handleAddTrade = async (tradeData: Trade) => {
+  const handleAddPosition = async (positionData: PositionFormData) => {
     try {
-      let result = 0;
-      if (tradeData.entry_price && tradeData.exit_price && tradeData.quantity) {
-        const entry = tradeData.entry_price;
-        const exit = tradeData.exit_price;
-        const quantity = tradeData.quantity;
-
-        if (tradeData.type === "Buy") {
-          result = (exit - entry) * quantity;
-        } else {
-          result = (entry - exit) * quantity;
-        }
-      }
-
-      const tradeWithResult = {
-        ...tradeData,
-        result,
-      };
-
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      await addTrade(tradeWithResult);
+      await addPosition(positionData);
       setIsTradeModalOpen(false);
-      loadTrades();
+      loadPositions();
     } catch (error) {
-      console.error("Erro ao adicionar trade:", error);
+      console.error("Erro ao adicionar posição:", error);
       throw error;
     }
   };
 
-  const handleUpdateTrade = async (tradeId: number, tradeData: Trade) => {
+  const handleDeletePosition = async () => {
+    if (!selectedPosition) return;
+    setIsDeleting(true);
     try {
-      let result = 0;
-      if (tradeData.entry_price && tradeData.exit_price && tradeData.quantity) {
-        const entry = tradeData.entry_price;
-        const exit = tradeData.exit_price;
-        const quantity = tradeData.quantity;
-
-        if (tradeData.type === "Buy") {
-          result = (exit - entry) * quantity;
-        } else {
-          result = (entry - exit) * quantity;
-        }
-      }
-
-      const tradeWithResult = {
-        ...tradeData,
-        result,
-      };
-
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      await updateTrade(tradeId, tradeWithResult);
-
-      const response = await getTrades();
-      const newPositions = summarizePositions(response.data);
-      setPositions(newPositions);
-
-      if (selectedPosition) {
-        const updatedSelectedPosition = newPositions.find(
-          (p: PositionSummary) => p.id === selectedPosition.id
-        );
-        setSelectedPosition(updatedSelectedPosition || null);
-      }
+      await deletePosition(selectedPosition.id);
+      loadPositions();
+      setIsConfirmModalOpen(false);
+      setSelectedPosition(null);
     } catch (error) {
-      console.error("Erro ao atualizar trade:", error);
-      throw error;
-    }
-  };
-
-  const handlePartialExitSubmit = async (exitData: {
-    exit_quantity: number;
-    exit_price: number;
-    exit_date: string;
-  }) => {
-    if (!tradeForPartialExit) return;
-    try {
-      await executePartialExit(tradeForPartialExit.id!, exitData);
-      setIsPartialExitModalOpen(false);
-
-      const response = await getTrades();
-      const newPositions = summarizePositions(response.data);
-      setPositions(newPositions);
-
-      if (selectedPosition) {
-        const updatedSelectedPosition = newPositions.find(
-          (p: PositionSummary) => p.id === selectedPosition.id
-        );
-        setSelectedPosition(updatedSelectedPosition || null);
-      }
-
-      setTradeForPartialExit(null);
-      setIsDetailsModalOpen(true);
-    } catch (error) {
-      console.error("Failed to execute partial exit", error);
-    }
-  };
-
-  const handleIncrementSubmit = async (incrementData: {
-    increment_quantity: number;
-    increment_price: number;
-    increment_date: string;
-  }) => {
-    if (!tradeForIncrement) return;
-    try {
-      await incrementPosition(tradeForIncrement.id!, incrementData);
-      setIsIncrementModalOpen(false);
-
-      const response = await getTrades();
-      const newPositions = summarizePositions(response.data);
-      setPositions(newPositions);
-
-      if (selectedPosition) {
-        const updatedSelectedPosition = newPositions.find(
-          (p: PositionSummary) => p.id === selectedPosition.id
-        );
-        setSelectedPosition(updatedSelectedPosition || null);
-      }
-
-      setTradeForIncrement(null);
-      setIsDetailsModalOpen(true);
-    } catch (error) {
-      console.error("Failed to increment position", error);
-    }
-  };
-
-  const handleSaveCapital = () => {
-    const newCapital = parseFloat(tempCapital);
-    if (!isNaN(newCapital)) {
-      setInitialCapital(newCapital);
-      localStorage.setItem("initialCapital", tempCapital);
-      setIsEditingCapital(false);
+      console.error("Erro ao deletar posição", error);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -295,76 +167,56 @@ const DashboardPage: React.FC = () => {
     setResultFilter("all");
   };
 
-  const currentCapital = initialCapital + totalProfit;
-
-  const handleOpenPartialExitModal = (trade: Trade) => {
-    setTradeForPartialExit(trade);
-    setIsPartialExitModalOpen(true);
-    setIsDetailsModalOpen(false);
+  const handleOpenNewTradeModal = () => {
+    setIsTradeModalOpen(true);
   };
-  const handleOpenIncrementModal = (trade: Trade) => {
-    setTradeForIncrement(trade);
-    setIsIncrementModalOpen(true);
-    setIsDetailsModalOpen(false);
-  };
-  const isFilterActive =
-    statusFilter !== "all" || tickerSearch !== "" || resultFilter !== "all";
 
-  const handleDeleteClick = () => {
-    setIsDetailsModalOpen(false);
+  const handleOpenDetailsModal = (position: Position) => {
+    setSelectedPosition(position);
+  };
+
+  const handleOpenConfirmDeleteModal = (position: Position) => {
+    setSelectedPosition(position);
     setIsConfirmModalOpen(true);
   };
 
-  const handleConfirmDelete = async () => {
-    if (!selectedPosition) return;
-    try {
-      setIsDeleting(true);
-      await deletePosition(selectedPosition.id!);
-      const response = await getTrades();
-      const newPositions = summarizePositions(response.data);
-      setPositions(newPositions);
-    } catch (error) {
-      console.error("Erro ao excluir trade:", error);
-    } finally {
-      setIsDeleting(false);
-      setIsConfirmModalOpen(false);
-      setIsDetailsModalOpen(false);
-    }
+  const handleCloseDetailsModal = () => {
+    setSelectedPosition(null);
+  };
+
+  const handleUpdateAndClose = () => {
+    loadPositions();
+    handleCloseDetailsModal();
   };
 
   return (
-    <div className="flex flex-col min-h-screen">
-      <DashboardHeader
-        logout={logout}
-        initialCapital={initialCapital}
-        currentCapital={currentCapital}
-      />
+    <>
+      <DashboardHeader logout={logout} />
 
-      {/* Main Content */}
-      <main className="flex-1 p-3 sm:p-4 md:p-6 bg-background overflow-y-auto">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl sm:text-2xl font-bold text-foreground">
-            Dashboard
-          </h2>
-          <Button onClick={() => setIsTradeModalOpen(true)}>
+      <main className="px-8 py-4">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl sm:text-2xl font-bold">Visão Geral</h2>
+          <Button onClick={handleOpenNewTradeModal}>
             <PlusCircle className="mr-2 h-4 w-4" />
-            Adicionar Novo Trade
+            Adicionar Trade
           </Button>
         </div>
 
         <DashboardMetrics
+          positions={positions}
+          totalProfit={totalProfit}
+          initialCapital={initialCapital}
+          setInitialCapital={setInitialCapital}
           isEditingCapital={isEditingCapital}
           setIsEditingCapital={setIsEditingCapital}
           tempCapital={tempCapital}
           setTempCapital={setTempCapital}
-          handleSaveCapital={handleSaveCapital}
-          initialCapital={initialCapital}
-          positions={positions}
         />
 
         <TradesHistory
-          setCurrentTrade={setCurrentTrade}
-          setIsTradeModalOpen={setIsTradeModalOpen}
+          positions={filteredPositions}
+          onOpenDetails={handleOpenDetailsModal}
+          onOpenNewTradeModal={handleOpenNewTradeModal}
           isFilterActive={isFilterActive}
           handleClearFilters={handleClearFilters}
           tickerSearch={tickerSearch}
@@ -373,78 +225,41 @@ const DashboardPage: React.FC = () => {
           setStatusFilter={setStatusFilter}
           resultFilter={resultFilter}
           setResultFilter={setResultFilter}
-          filteredPositions={filteredPositions}
-          setSelectedPosition={setSelectedPosition}
-          setStartInEditMode={setStartInEditMode}
-          setIsDetailsModalOpen={setIsDetailsModalOpen}
         />
       </main>
 
-      {/* Modal para adicionar novo trade */}
-      <Modal
-        isOpen={isTradeModalOpen}
-        onClose={() => setIsTradeModalOpen(false)}
-        title={currentTrade ? "Editar Trade" : "Adicionar Trade"}
-      >
-        <TradeForm
-          onAddTrade={handleAddTrade}
-          onCancel={() => setIsTradeModalOpen(false)}
-          initialData={currentTrade}
-        />
-      </Modal>
+      {isTradeModalOpen && (
+        <Modal
+          isOpen={isTradeModalOpen}
+          title="Adicionar Novo Trade"
+          onClose={() => setIsTradeModalOpen(false)}
+        >
+          <PositionForm
+            onSubmit={handleAddPosition}
+            onClose={() => setIsTradeModalOpen(false)}
+          />
+        </Modal>
+      )}
 
-      {/* Modal para detalhes/edição do trade */}
       {selectedPosition && (
-        <TradeDetailsModal
-          isOpen={isDetailsModalOpen}
-          onClose={() => setIsDetailsModalOpen(false)}
+        <PositionDetailsModal
           position={selectedPosition}
-          onUpdateTrade={handleUpdateTrade}
-          onOpenPartialExit={handleOpenPartialExitModal}
-          onOpenIncrement={handleOpenIncrementModal}
-          onDeleteClick={handleDeleteClick}
-          startInEditMode={startInEditMode}
+          onClose={handleCloseDetailsModal}
+          onUpdate={handleUpdateAndClose}
         />
       )}
 
-      {tradeForPartialExit && (
-        <Modal
-          isOpen={isPartialExitModalOpen}
-          onClose={() => setIsPartialExitModalOpen(false)}
-          title={`Saída Parcial de ${tradeForPartialExit.ticker}`}
-        >
-          <PartialExitForm
-            onSubmit={handlePartialExitSubmit}
-            onCancel={() => setIsPartialExitModalOpen(false)}
-            remainingQuantity={tradeForPartialExit.quantity}
-          />
-        </Modal>
+      {isConfirmModalOpen && (
+        <ConfirmationModal
+          isOpen={isConfirmModalOpen}
+          onClose={() => setIsConfirmModalOpen(false)}
+          onConfirm={handleDeletePosition}
+          title="Confirmar Exclusão"
+          message={`Tem certeza que deseja excluir a posição do ticker ${selectedPosition?.ticker}? Toda a posição, incluindo parciais e incrementos, será removida.`}
+          loading={isDeleting}
+        />
       )}
-
-      {tradeForIncrement && (
-        <Modal
-          isOpen={isIncrementModalOpen}
-          onClose={() => setIsIncrementModalOpen(false)}
-          title={`Incrementar Posição em ${tradeForIncrement.ticker}`}
-        >
-          <PositionIncrementForm
-            onSubmit={handleIncrementSubmit}
-            onCancel={() => setIsIncrementModalOpen(false)}
-            currentQuantity={tradeForIncrement.quantity}
-          />
-        </Modal>
-      )}
-      <ConfirmationModal
-        isOpen={isConfirmModalOpen}
-        onClose={() => setIsConfirmModalOpen(false)}
-        onConfirm={handleConfirmDelete}
-        title="Confirmar Exclusão"
-        message="Você tem certeza que deseja excluir este trade? Esta ação não pode ser desfeita."
-        confirmText="Excluir"
-        cancelText="Cancelar"
-        loading={isDeleting}
-      />
-    </div>
+    </>
   );
 };
 
