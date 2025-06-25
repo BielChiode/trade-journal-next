@@ -3,15 +3,20 @@ import { Position, Operation } from "../types/trade";
 import { PositionFormData } from "@/components/PositionForm";
 
 // Função helper para transformar os campos de data de string para Date
-const transformPositionDates = (position: Position): Position => ({
+const transformPositionData = (position: any): Position => ({
   ...position,
+  average_entry_price: parseFloat(position.average_entry_price),
+  total_realized_pnl: parseFloat(position.total_realized_pnl),
   initial_entry_date: new Date(position.initial_entry_date),
   last_exit_date: position.last_exit_date ? new Date(position.last_exit_date) : undefined,
+  operations: position.operations.map(transformOperationData),
 });
 
 // Função helper para transformar os campos de data de uma operação
-const transformOperationDates = (operation: Operation): Operation => ({
+const transformOperationData = (operation: any): Operation => ({
   ...operation,
+  price: parseFloat(operation.price),
+  result: operation.result ? parseFloat(operation.result) : null,
   date: new Date(operation.date),
 });
 
@@ -19,9 +24,10 @@ const transformOperationDates = (operation: Operation): Operation => ({
 type CreatePositionData = {
   ticker: string;
   type: "Buy" | "Sell";
-  entry_date: string;
-  entry_price: number;
+  date: string;
+  price: number;
   quantity: number;
+  setup?: string;
   observations?: string;
 };
 
@@ -29,22 +35,22 @@ export const getPositions = async (): Promise<Position[]> => {
   // A API retorna posições com datas como strings.
   // Fazemos o cast para 'any' para poder mapear e transformar.
   const { data: positions } = await apiClient.get<any[]>("/trades");
-  return positions.map(transformPositionDates as (pos: any) => Position);
+  return positions.map(transformPositionData);
 };
 
 export const addPosition = (positionData: CreatePositionData) =>
-  apiClient.post<{ positionId: number }>("/trades", positionData);
+  apiClient.post("/trades", positionData);
 
-export const updatePosition = (positionId: number, data: PositionFormData) =>
+export const updatePosition = (positionId: number, data: { setup?: string; observations?: string }) =>
   apiClient.put(`/trades/${positionId}`, data);
 
 export const getOperationsByPositionId = async (positionId: number): Promise<Operation[]> => {
   const { data: operations } = await apiClient.get<any[]>(`/positions/${positionId}/operations`);
-  return operations.map(transformOperationDates as (op: any) => Operation);
+  return operations.map(transformOperationData);
 };
 
 export const deletePosition = (positionId: number) =>
-  apiClient.delete<void>(`/trades/${positionId}`);
+  apiClient.delete(`/trades/${positionId}`);
 
 type IncrementData = {
   quantity: number;

@@ -8,10 +8,13 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "db:init": "tsx --env-file .env.local scripts/init-db.ts",
-    "postinstall": "tsx scripts/init-db.ts"
+    "prisma:migrate": "dotenv -e .env.local -- npx prisma migrate dev",
+    "prisma:reset": "dotenv -e .env.local -- npx prisma migrate reset",
+    "prisma:studio": "dotenv -e .env.local -- npx prisma studio",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
+    "@prisma/client": "^6.10.1",
     "@radix-ui/react-dialog": "^1.1.14",
     "@radix-ui/react-label": "^2.1.7",
     "@radix-ui/react-slot": "^1.2.3",
@@ -45,9 +48,11 @@
     "@types/react-dom": "^19",
     "autoprefixer": "^10.4.21",
     "dotenv": "^16.5.0",
+    "dotenv-cli": "^8.0.0",
     "eslint": "^9",
     "eslint-config-next": "15.3.4",
     "postcss": "^8.5.6",
+    "prisma": "^6.10.1",
     "tailwindcss": "^4.1.10",
     "tsx": "^4.20.3",
     "typescript": "^5"

@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
-import pool from "@/lib/db/database";
-import { User } from "@/types/auth";
+import prisma from "@/lib/prisma";
 import { createAccessToken, createRefreshToken } from "@/lib/jwt";
 
-export async function POST(req: NextRequest) {
+export async function POST(request: NextRequest) {
   try {
-    const { email, password } = await req.json();
+    const { email, password } = await request.json();
 
     if (!email || !password) {
       return NextResponse.json(
@@ -15,9 +14,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const query = "SELECT * FROM users WHERE email = $1";
-    const { rows } = await pool.query<User>(query, [email]);
-    const user = rows[0];
+    const user = await prisma.user.findUnique({
+      where: { email },
+    });
 
     if (!user) {
       return NextResponse.json(
@@ -39,20 +38,20 @@ export async function POST(req: NextRequest) {
     const refreshToken = createRefreshToken(user);
 
     const response = NextResponse.json({ accessToken });
-
+    
     response.cookies.set("refreshToken", refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
       path: "/",
+      sameSite: "strict",
       maxAge: 60 * 60 * 24 * 7, // 7 dias
     });
 
     return response;
-  } catch (error) {
+  } catch (error: any) {
     console.error("Login error:", error);
     return NextResponse.json(
-      { message: "Internal server error" },
+      { message: "An unexpected error occurred" },
       { status: 500 }
     );
   }

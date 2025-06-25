@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getUserIdFromRequest } from "@/lib/auth";
-import { createPositionWithInitialOperation } from "@/lib/db/position-helpers";
-import { PositionModel } from "@/models/position";
+import prisma from "@/lib/prisma";
+import { PositionStatus, PositionType } from "@/generated/prisma";
 
 export async function GET(request: NextRequest) {
   try {
@@ -10,14 +10,25 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
-    const positions = await PositionModel.findAllByUser(userId);
+    const positions = await prisma.position.findMany({
+      where: { userId },
+      include: {
+        operations: {
+          orderBy: {
+            date: 'asc',
+          },
+        },
+      },
+      orderBy: {
+        initial_entry_date: 'desc',
+      }
+    });
 
     return NextResponse.json(positions);
-
-  } catch (error) {
-    console.error("Failed to fetch positions:", error);
+  } catch (error: any) {
+    console.error("Failed to fetch trades:", error);
     return NextResponse.json(
-      { message: "Failed to fetch positions" },
+      { message: "Failed to fetch trades" },
       { status: 500 }
     );
   }
@@ -25,35 +36,50 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-  const userId = getUserIdFromRequest(request);
-  if (!userId) {
-    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-  }
-
-    const body = await request.json();
-    const { ticker, type, entry_date, entry_price, quantity, setup, observations } = body;
-
-    if (!ticker || !type || !entry_date || !entry_price || !quantity) {
-        return NextResponse.json({ message: "Missing required fields" }, { status: 400 });
+    const userId = getUserIdFromRequest(request);
+    if (!userId) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
-    const result = await createPositionWithInitialOperation({
-      user_id: userId,
-      ticker,
-      type,
-      entry_date,
-      entry_price,
-      quantity,
-      setup,
-      observations,
+    const body = await request.json();
+    const { ticker, type, quantity, price, date, setup, observations } = body;
+
+    if (!ticker || !type || !quantity || !price || !date) {
+      return NextResponse.json({ message: "Missing required fields" }, { status: 400 });
+    }
+    
+    const newPosition = await prisma.position.create({
+      data: {
+        user: { connect: { id: userId } },
+        ticker,
+        type: type === 'Buy' ? PositionType.Buy : PositionType.Sell,
+        status: PositionStatus.Open,
+        average_entry_price: price,
+        current_quantity: quantity,
+        initial_entry_date: new Date(date),
+        setup,
+        observations,
+        operations: {
+          create: {
+            user: { connect: { id: userId } },
+            operation_type: 'Entry',
+            quantity,
+            price,
+            date: new Date(date),
+          }
+        }
+      },
+      include: {
+        operations: true
+      }
     });
 
-    return NextResponse.json(result, { status: 201 });
+    return NextResponse.json(newPosition, { status: 201 });
 
-  } catch (error) {
-    console.error("Failed to create position:", error);
+  } catch (error: any) {
+    console.error("Failed to create trade:", error);
     return NextResponse.json(
-      { message: "Failed to create position" },
+      { message: "Failed to create trade" },
       { status: 500 }
     );
   }
