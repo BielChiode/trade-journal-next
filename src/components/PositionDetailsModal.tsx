@@ -58,7 +58,7 @@ const PositionDetailsModal: React.FC<PositionDetailsModalProps> = ({
         setOperations([]);
       })
       .finally(() => setIsLoading(false));
-  }
+  };
 
   useEffect(() => {
     if (position) {
@@ -423,15 +423,17 @@ const PositionDetailsModal: React.FC<PositionDetailsModalProps> = ({
               variant="default"
               onClick={() => setIsEditing(true)}
               className="w-full sm:w-auto"
+              title="Editar Posição"
             >
-              <Edit size={16} className="mr-2" /> Editar
+              <Edit size={16} />
             </Button>
             <Button
               variant="destructive"
               onClick={() => setIsDeleteConfirmOpen(true)}
               className="w-full sm:w-auto"
+              title="Excluir Posição"
             >
-              <Trash2 size={16} className="mr-2" /> Excluir Posição
+              <Trash2 size={16} />
             </Button>
           </div>
         </div>
@@ -455,7 +457,7 @@ const PositionDetailsModal: React.FC<PositionDetailsModalProps> = ({
         <Modal
           isOpen={isPartialExitModalOpen}
           onClose={() => setIsPartialExitModalOpen(false)}
-          title="Saída Parcial"
+          title="Registrar Saída"
         >
           <PartialExitForm
             onSubmit={handlePartialExitSubmit}
