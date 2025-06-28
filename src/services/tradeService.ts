@@ -69,3 +69,22 @@ type PartialExitData = {
 
 export const executePartialExit = (positionId: number, data: PartialExitData) =>
   apiClient.post(`/positions/${positionId}/partial-exit`, data);
+
+export const searchTickers = async (
+  symbol: string
+): Promise<
+  { symbol: string; instrument_name: string; exchange: string }[]
+> => {
+  if (!symbol) {
+    return [];
+  }
+  try {
+    const response = await apiClient.get(
+      `/tickers?symbol=${encodeURIComponent(symbol)}`
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Erro ao buscar tickers:", error);
+    return [];
+  }
+};
