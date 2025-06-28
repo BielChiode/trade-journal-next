@@ -39,6 +39,7 @@ const DashboardPage: React.FC = () => {
   const [tempCapital, setTempCapital] = useState<number>(initialCapital);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isPositionsLoading, setIsPositionsLoading] = useState(true);
 
   const [statusFilter, setStatusFilter] = useState<"all" | "Open" | "Closed">(
     "all"
@@ -75,6 +76,8 @@ const DashboardPage: React.FC = () => {
       });
     } catch (error) {
       console.error("Erro ao carregar posições:", error);
+    } finally {
+      setIsPositionsLoading(false);
     }
   }, [isAuthenticated]);
 
@@ -138,10 +141,12 @@ const DashboardPage: React.FC = () => {
 
   const handleAddPosition = async (positionData: PositionFormData) => {
     try {
+      setIsPositionsLoading(true);
       await addPosition(positionData);
       setIsTradeModalOpen(false);
-      loadPositions();
+      await loadPositions();
     } catch (error) {
+      setIsPositionsLoading(false);
       console.error("Erro ao adicionar posição:", error);
       throw error;
     }
@@ -151,14 +156,16 @@ const DashboardPage: React.FC = () => {
     if (!selectedPosition) return;
     setIsDeleting(true);
     try {
+      setIsPositionsLoading(true);
       await deletePosition(selectedPosition.id);
-      loadPositions();
+      await loadPositions();
       setIsConfirmModalOpen(false);
       setSelectedPosition(null);
     } catch (error) {
       console.error("Erro ao deletar posição", error);
     } finally {
       setIsDeleting(false);
+      setIsPositionsLoading(false);
     }
   };
 
@@ -198,30 +205,38 @@ const DashboardPage: React.FC = () => {
           </Button>
         </div>
 
-        <DashboardMetrics
-          positions={positions}
-          totalProfit={totalProfit}
-          initialCapital={initialCapital}
-          setInitialCapital={setInitialCapital}
-          isEditingCapital={isEditingCapital}
-          setIsEditingCapital={setIsEditingCapital}
-          tempCapital={tempCapital}
-          setTempCapital={setTempCapital}
-        />
+        {isPositionsLoading ? (
+          <div className="flex justify-center items-center h-64">
+            <Loader />
+          </div>
+        ) : (
+          <>
+            <DashboardMetrics
+              positions={positions}
+              totalProfit={totalProfit}
+              initialCapital={initialCapital}
+              setInitialCapital={setInitialCapital}
+              isEditingCapital={isEditingCapital}
+              setIsEditingCapital={setIsEditingCapital}
+              tempCapital={tempCapital}
+              setTempCapital={setTempCapital}
+            />
 
-        <PositionsHistory
-          positions={filteredPositions}
-          onOpenDetails={handleOpenDetailsModal}
-          onOpenNewTradeModal={handleOpenNewTradeModal}
-          isFilterActive={isFilterActive}
-          handleClearFilters={handleClearFilters}
-          tickerSearch={tickerSearch}
-          setTickerSearch={setTickerSearch}
-          statusFilter={statusFilter}
-          setStatusFilter={setStatusFilter}
-          resultFilter={resultFilter}
-          setResultFilter={setResultFilter}
-        />
+            <PositionsHistory
+              positions={filteredPositions}
+              onOpenDetails={handleOpenDetailsModal}
+              onOpenNewTradeModal={handleOpenNewTradeModal}
+              isFilterActive={isFilterActive}
+              handleClearFilters={handleClearFilters}
+              tickerSearch={tickerSearch}
+              setTickerSearch={setTickerSearch}
+              statusFilter={statusFilter}
+              setStatusFilter={setStatusFilter}
+              resultFilter={resultFilter}
+              setResultFilter={setResultFilter}
+            />
+          </>
+        )}
       </main>
 
       {isTradeModalOpen && (

@@ -1,10 +1,12 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "./ui/Button";
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
 import ButtonLoader from "@/components/ui/ButtonLoader";
 import { Input } from "./ui/Input";
 import { Position } from "@/types/trade";
+import { searchTickers } from "@/services/tradeService";
+import { useDebounce } from "@/hooks/useDebounce";
 
 type ValuePiece = Date | null;
 type Value = ValuePiece | [ValuePiece, ValuePiece];
@@ -38,16 +40,52 @@ const PositionForm: React.FC<PositionFormProps> = ({
   const [formData, setFormData] = useState<PositionFormData>({
     ticker: initialData?.ticker || "",
     type: initialData?.type || "Buy",
-    date: (initialData as PositionFormData)?.date || new Date().toISOString().split("T")[0],
+    date:
+      (initialData as PositionFormData)?.date ||
+      new Date().toISOString().split("T")[0],
     price: (initialData as PositionFormData)?.price || 0,
     quantity: (initialData as PositionFormData)?.quantity || 0,
     setup: initialData?.setup || "",
     observations: initialData?.observations || "",
   });
 
+  const [tickerSuggestions, setTickerSuggestions] = useState<
+    { symbol: string; instrument_name: string; exchange: string }[]
+  >([]);
+  const [isSearching, setIsSearching] = useState(false);
+
   const [loading, setLoading] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
   const calendarRef = useRef<HTMLDivElement>(null);
+  const tickerInputRef = useRef<HTMLDivElement>(null);
+  const hasUserStartedTyping = useRef(false);
+  const skipNextDebounce = useRef(false);
+
+  const debouncedTicker = useDebounce(formData.ticker, 300);
+
+  useEffect(() => {
+    const fetchTickers = async () => {
+      if (skipNextDebounce.current) {
+        skipNextDebounce.current = false;
+        return;
+      }
+      if (
+        !hasUserStartedTyping.current ||
+        isEditRestricted ||
+        debouncedTicker.length < 2
+      ) {
+        setTickerSuggestions([]);
+        return;
+      }
+      setIsSearching(true);
+      const results = await searchTickers(debouncedTicker);
+      setTickerSuggestions(results);
+      setIsSearching(false);
+    };
+    fetchTickers();
+  }, [debouncedTicker, isEditRestricted]);
+
+  console.log(tickerSuggestions);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -56,6 +94,12 @@ const PositionForm: React.FC<PositionFormProps> = ({
         !calendarRef.current.contains(event.target as Node)
       ) {
         setShowCalendar(false);
+      }
+      if (
+        tickerInputRef.current &&
+        !tickerInputRef.current.contains(event.target as Node)
+      ) {
+        setTickerSuggestions([]);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -69,6 +113,9 @@ const PositionForm: React.FC<PositionFormProps> = ({
       HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
     >
   ) => {
+    if (e.target.name === "ticker" && !hasUserStartedTyping.current) {
+      hasUserStartedTyping.current = true;
+    }
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
@@ -77,6 +124,19 @@ const PositionForm: React.FC<PositionFormProps> = ({
           ? parseFloat(value) || ""
           : value,
     }));
+  };
+
+  const handleTickerSelect = (ticker: {
+    symbol: string;
+    instrument_name: string;
+    exchange: string;
+  }) => {
+    skipNextDebounce.current = true;
+    setFormData((prev) => ({
+      ...prev,
+      ticker: ticker.symbol,
+    }));
+    setTickerSuggestions([]);
   };
 
   const handleDateChange = (value: Value) => {
@@ -114,15 +174,40 @@ const PositionForm: React.FC<PositionFormProps> = ({
           <label className="block text-sm font-medium text-muted-foreground mb-1">
             Ticker *
           </label>
-          <Input
-            name="ticker"
-            value={formData.ticker}
-            onChange={handleChange}
-            placeholder="Ex: PETR4"
-            className="text-base sm:text-sm"
-            required
-            disabled={isEditRestricted}
-          />
+          <div className="relative" ref={tickerInputRef}>
+            <Input
+              name="ticker"
+              value={formData.ticker}
+              onChange={handleChange}
+              placeholder="Ex: PETR4"
+              className="text-base sm:text-sm"
+              required
+              disabled={isEditRestricted}
+              autoComplete="off"
+            />
+            {isSearching && (
+              <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                <ButtonLoader text="" />
+              </div>
+            )}
+            {tickerSuggestions.length > 0 && (
+              <ul className="absolute z-10 w-full bg-background border border-border rounded-md mt-1 max-h-60 overflow-y-auto shadow-lg">
+                {tickerSuggestions.map((s, index) => (
+                  <li
+                    key={`${s.symbol}-${index}`}
+                    className="px-3 py-2 cursor-pointer hover:bg-muted"
+                    onClick={() => handleTickerSelect(s)}
+                  >
+                    <p className="font-bold text-sm">{s.symbol}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {s.instrument_name}{" "}
+                      {s.exchange && `(${s.exchange})`}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
         <div>
           <label className="block text-sm font-medium text-muted-foreground mb-1">
@@ -162,9 +247,7 @@ const PositionForm: React.FC<PositionFormProps> = ({
               <div ref={calendarRef} className="absolute z-10 mt-1">
                 <Calendar
                   onChange={handleDateChange}
-                  value={
-                    formData.date ? new Date(formData.date) : null
-                  }
+                  value={formData.date ? new Date(formData.date) : null}
                   locale="pt-BR"
                 />
               </div>
