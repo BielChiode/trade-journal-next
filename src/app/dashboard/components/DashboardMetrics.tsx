@@ -41,6 +41,10 @@ const DashboardMetrics: React.FC<DashboardMetricsProps> = ({
 
     const payoffRatio = averageLoss !== 0 ? Math.abs(averageProfit / averageLoss) : 0;
 
+    const allocatedCapital = positions
+        .filter((p) => p.status === 'Open')
+        .reduce((acc, p) => acc + p.current_quantity * p.average_entry_price, 0);
+
     const handleCapitalEdit = () => {
         if (isEditingCapital) {
             const newCapital = tempCapital;
@@ -54,6 +58,7 @@ const DashboardMetrics: React.FC<DashboardMetricsProps> = ({
 
     const metricCards = [
         { title: 'Posições Encerradas', value: totalTrades },
+        { title: 'Capital Alocado', value: formatCurrency(allocatedCapital) },
         { title: 'Taxa de Acerto', value: formatPercentage(winRate) },
         { title: 'Lucro Médio', value: formatCurrency(averageProfit) },
         { title: 'Payoff Ratio', value: payoffRatio.toFixed(2) },
