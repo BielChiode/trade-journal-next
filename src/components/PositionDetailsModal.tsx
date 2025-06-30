@@ -22,6 +22,7 @@ import {
   deletePosition,
   incrementPosition,
   executePartialExit,
+  deleteOperation,
 } from "@/services/tradeService";
 import Loader from "./ui/Loader";
 import PositionIncrementForm from "./PositionIncrementForm";
@@ -46,6 +47,9 @@ const PositionDetailsModal: React.FC<PositionDetailsModalProps> = ({
   const [isPartialExitModalOpen, setIsPartialExitModalOpen] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [operationToDelete, setOperationToDelete] = useState<Operation | null>(
+    null
+  );
 
   const refreshPositionDetails = () => {
     setIsLoading(true);
@@ -110,6 +114,28 @@ const PositionDetailsModal: React.FC<PositionDetailsModalProps> = ({
     onUpdate();
     refreshPositionDetails();
     setIsPartialExitModalOpen(false);
+  };
+
+  const openDeleteOperationConfirm = (operation: Operation) => {
+    setOperationToDelete(operation);
+  };
+
+  const handleDeleteOperation = async () => {
+    if (!operationToDelete) return;
+    setIsDeleting(true);
+    try {
+      await deleteOperation(
+        position.id.toString(),
+        operationToDelete.id.toString()
+      );
+      setOperationToDelete(null);
+      onUpdate();
+      refreshPositionDetails();
+    } catch (error) {
+      console.error("Erro ao deletar operação:", error);
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const isProfit = position.total_realized_pnl >= 0;
@@ -254,7 +280,7 @@ const PositionDetailsModal: React.FC<PositionDetailsModalProps> = ({
                   return (
                     <div
                       key={op.id}
-                      className="flex justify-between items-center text-sm py-1"
+                      className="flex justify-between items-center text-sm py-1 group"
                     >
                       <div className="flex items-center gap-2">
                         {isIncrement ? (
@@ -277,29 +303,44 @@ const PositionDetailsModal: React.FC<PositionDetailsModalProps> = ({
                           </p>
                         </div>
                       </div>
-                      {!isIncrement && op.result != null && (
-                        <div className="text-right">
-                          <span
-                            className={`font-semibold ${
-                              profit ? "text-green-600" : "text-red-600"
-                            }`}
+                      <div className="flex items-center gap-2">
+                        {!isIncrement && op.result != null && (
+                          <div className="text-right">
+                            <span
+                              className={`font-semibold ${
+                                profit ? "text-green-600" : "text-red-600"
+                              }`}
+                            >
+                              {profit ? "+" : ""}
+                              {formatCurrency(
+                                op.result ? Number(op.result) : null
+                              )}
+                            </span>
+                            <p
+                              className={`text-xs font-medium ${
+                                profit ? "text-green-500/90" : "text-red-500/90"
+                              }`}
+                            >
+                              {profit ? "+" : ""}
+                              {percentageResult.toLocaleString("pt-BR", {
+                                style: "percent",
+                                minimumFractionDigits: 2,
+                              })}
+                            </p>
+                          </div>
+                        )}
+                        {position.status === "Open" && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title="Excluir Operação"
+                            className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => openDeleteOperationConfirm(op)}
                           >
-                            {profit ? "+" : ""}
-                            {formatCurrency(op.result)}
-                          </span>
-                          <p
-                            className={`text-xs font-medium ${
-                              profit ? "text-green-500/90" : "text-red-500/90"
-                            }`}
-                          >
-                            {profit ? "+" : ""}
-                            {percentageResult.toLocaleString("pt-BR", {
-                              style: "percent",
-                              minimumFractionDigits: 2,
-                            })}
-                          </p>
-                        </div>
-                      )}
+                            <Trash2 size={16} className="text-red-500" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   );
                 })
@@ -486,6 +527,23 @@ const PositionDetailsModal: React.FC<PositionDetailsModalProps> = ({
           onConfirm={handleDelete}
           title="Confirmar Exclusão"
           message="Tem certeza de que deseja excluir esta posição? Esta ação não pode ser desfeita."
+          loading={isDeleting}
+        />
+      )}
+
+      {operationToDelete && (
+        <ConfirmationModal
+          isOpen={!!operationToDelete}
+          onClose={() => setOperationToDelete(null)}
+          onConfirm={handleDeleteOperation}
+          title="Confirmar Exclusão de Operação"
+          message={`Tem certeza que deseja excluir esta operação (${
+            operationToDelete.operation_type === "Increment"
+              ? "Incremento"
+              : "Venda Parcial"
+          } de ${operationToDelete.quantity} @ ${formatCurrency(
+            Number(operationToDelete.price)
+          )})? Esta ação irá recalcular toda a posição.`}
           loading={isDeleting}
         />
       )}

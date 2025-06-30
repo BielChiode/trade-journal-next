@@ -1,18 +1,17 @@
 import apiClient from "./apiClient";
 import { Position, Operation } from "../types/trade";
-import { PositionFormData } from "@/components/PositionForm";
 
-// Função helper para transformar os campos de data de string para Date
 const transformPositionData = (position: any): Position => ({
   ...position,
   average_entry_price: parseFloat(position.average_entry_price),
   total_realized_pnl: parseFloat(position.total_realized_pnl),
   initial_entry_date: new Date(position.initial_entry_date),
-  last_exit_date: position.last_exit_date ? new Date(position.last_exit_date) : undefined,
+  last_exit_date: position.last_exit_date
+    ? new Date(position.last_exit_date)
+    : undefined,
   operations: position.operations.map(transformOperationData),
 });
 
-// Função helper para transformar os campos de data de uma operação
 const transformOperationData = (operation: any): Operation => ({
   ...operation,
   price: parseFloat(operation.price),
@@ -20,7 +19,6 @@ const transformOperationData = (operation: any): Operation => ({
   date: new Date(operation.date),
 });
 
-// Tipagem para a criação de uma nova posição, que não precisa de todos os campos de uma Posição
 type CreatePositionData = {
   ticker: string;
   type: "Buy" | "Sell";
@@ -32,25 +30,29 @@ type CreatePositionData = {
 };
 
 export const getPositions = async (): Promise<Position[]> => {
-  // A API retorna posições com datas como strings.
-  // Fazemos o cast para 'any' para poder mapear e transformar.
-  const { data: positions } = await apiClient.get<any[]>("/trades");
+  const { data: positions } = await apiClient.get<any[]>("/positions");
   return positions.map(transformPositionData);
 };
 
 export const addPosition = (positionData: CreatePositionData) =>
-  apiClient.post("/trades", positionData);
+  apiClient.post("/positions", positionData);
 
-export const updatePosition = (positionId: number, data: { setup?: string; observations?: string }) =>
-  apiClient.put(`/trades/${positionId}`, data);
+export const updatePosition = (
+  positionId: number,
+  data: { setup?: string; observations?: string }
+) => apiClient.put(`/positions/${positionId}`, data);
 
-export const getOperationsByPositionId = async (positionId: number): Promise<Operation[]> => {
-  const { data: operations } = await apiClient.get<any[]>(`/positions/${positionId}/operations`);
+export const getOperationsByPositionId = async (
+  positionId: number
+): Promise<Operation[]> => {
+  const { data: operations } = await apiClient.get<any[]>(
+    `/positions/${positionId}/operations`
+  );
   return operations.map(transformOperationData);
 };
 
 export const deletePosition = (positionId: number) =>
-  apiClient.delete(`/trades/${positionId}`);
+  apiClient.delete(`/positions/${positionId}`);
 
 type IncrementData = {
   quantity: number;
@@ -72,9 +74,7 @@ export const executePartialExit = (positionId: number, data: PartialExitData) =>
 
 export const searchTickers = async (
   symbol: string
-): Promise<
-  { symbol: string; instrument_name: string; exchange: string }[]
-> => {
+): Promise<{ symbol: string; instrument_name: string; exchange: string }[]> => {
   if (!symbol) {
     return [];
   }
@@ -88,3 +88,21 @@ export const searchTickers = async (
     return [];
   }
 };
+
+export async function deleteOperation(
+  positionId: string,
+  operationId: string
+): Promise<void> {
+  try {
+    const response = await apiClient.delete(
+      `/positions/${positionId}/operations/${operationId}`
+    );
+    if (response.status !== 200) {
+      const errorData = response.data;
+      throw new Error(errorData.error || "Falha ao deletar operação");
+    }
+  } catch (error) {
+    console.error("Erro ao deletar operação:", error);
+    throw error;
+  }
+}
