@@ -10,6 +10,9 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "Trade Journal",
   description: "Seu diário de trades para análise e melhoria de performance.",
+  icons: {
+    icon: "/logo.png",
+  },
 };
 
 export default function RootLayout({

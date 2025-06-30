@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Image from "next/image";
 import { LogOut } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import ConfirmationModal from "@/components/ui/ConfirmationModal";
@@ -16,15 +17,25 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ logout }) => {
   return (
     <>
       <header className="sticky top-0 z-10 flex items-center justify-between h-14 sm:h-16 px-3 sm:px-4 md:px-6 border-b shrink-0 bg-background">
-        <h1 className="text-base sm:text-lg font-semibold truncate">
-          Trade Journal
-        </h1>
+        <div className="flex items-center gap-3">
+          <Image
+            src="/logo.png"
+            alt="Trade Journal"
+            width={40}
+            height={40}
+            className="h-8 w-8 sm:h-9 sm:w-9"
+            priority
+          />
+          <span className="text-base sm:text-lg font-semibold">
+            Trade Journal
+          </span>
+        </div>
 
         <div className="flex items-center gap-2">
-            <ThemeToggle />
-            <Button variant="ghost" size="icon" onClick={() => setIsLogoutConfirmOpen(true)} title="Sair">
-              <LogOut size={16} />
-            </Button>
+          <ThemeToggle />
+          <Button variant="ghost" size="icon" onClick={() => setIsLogoutConfirmOpen(true)} title="Sair">
+            <LogOut size={16} />
+          </Button>
         </div>
       </header>
       <ConfirmationModal
