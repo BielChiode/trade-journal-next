@@ -334,7 +334,7 @@ const PositionDetailsModal: React.FC<PositionDetailsModalProps> = ({
                             variant="ghost"
                             size="icon"
                             title="Excluir Operação"
-                            className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                            className="h-8 w-8"
                             onClick={() => openDeleteOperationConfirm(op)}
                           >
                             <Trash2 size={16} className="text-red-500" />
