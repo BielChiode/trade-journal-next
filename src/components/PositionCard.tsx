@@ -1,6 +1,6 @@
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
-import { cn, formatDate } from "@/lib/utils";
+import { cn, formatCurrency, formatDate } from "@/lib/utils";
 import { TrendingDown, TrendingUp, Clock, CheckCircle } from "lucide-react";
 import { Position } from "../types/trade";
 
@@ -13,29 +13,42 @@ const PositionCard: React.FC<PositionCardProps> = ({ position, onClick }) => {
   const isProfit = position.total_realized_pnl >= 0;
 
   const closedPositionMetrics = React.useMemo(() => {
-    if (position.status !== 'Closed' || !position.operations || position.operations.length === 0) {
+    if (
+      position.status !== "Closed" ||
+      !position.operations ||
+      position.operations.length === 0
+    ) {
       return { total_quantity: 0, average_exit_price: 0 };
     }
 
-    const entryOperations = position.operations.filter(op => op.operation_type === 'Entry' || op.operation_type === 'Increment');
-    const exitOperations = position.operations.filter(op => op.operation_type === 'PartialExit');
+    const entryOperations = position.operations.filter(
+      (op) => op.operation_type === "Entry" || op.operation_type === "Increment"
+    );
+    const exitOperations = position.operations.filter(
+      (op) => op.operation_type === "PartialExit"
+    );
 
-    const total_quantity = entryOperations.reduce((acc, op) => acc + op.quantity, 0);
-    
+    const total_quantity = entryOperations.reduce(
+      (acc, op) => acc + op.quantity,
+      0
+    );
+
     let average_exit_price = 0;
     if (exitOperations.length > 0) {
-      const totalExitValue = exitOperations.reduce((acc, op) => acc + (op.price * op.quantity), 0);
-      const totalExitQuantity = exitOperations.reduce((acc, op) => acc + op.quantity, 0);
-      average_exit_price = totalExitQuantity > 0 ? totalExitValue / totalExitQuantity : 0;
+      const totalExitValue = exitOperations.reduce(
+        (acc, op) => acc + op.price * op.quantity,
+        0
+      );
+      const totalExitQuantity = exitOperations.reduce(
+        (acc, op) => acc + op.quantity,
+        0
+      );
+      average_exit_price =
+        totalExitQuantity > 0 ? totalExitValue / totalExitQuantity : 0;
     }
-    
+
     return { total_quantity, average_exit_price };
   }, [position]);
-
-  const formatCurrency = (value: number | null | undefined): string => {
-    if (value === null || value === undefined) return "N/A";
-    return `R$ ${Number(value).toFixed(2)}`;
-  };
 
   const displayDate = formatDate(
     position.status === "Open"
@@ -91,7 +104,9 @@ const PositionCard: React.FC<PositionCardProps> = ({ position, onClick }) => {
             <>
               <div className="flex justify-between items-center text-xs sm:text-sm">
                 <span className="text-muted-foreground">Qtd. Total:</span>
-                <span className="font-medium">{closedPositionMetrics.total_quantity}</span>
+                <span className="font-medium">
+                  {closedPositionMetrics.total_quantity}
+                </span>
               </div>
               <div className="flex justify-between items-center text-xs sm:text-sm">
                 <span className="text-muted-foreground">
@@ -122,6 +137,14 @@ const PositionCard: React.FC<PositionCardProps> = ({ position, onClick }) => {
                 </span>
                 <span className="font-medium">
                   {formatCurrency(position.average_entry_price)}
+                </span>
+              </div>
+              <div className="flex justify-between items-center text-xs sm:text-sm">
+                <span className="text-muted-foreground">Capital Alocado:</span>
+                <span className="font-medium">
+                  {formatCurrency(
+                    position.current_quantity * position.average_entry_price
+                  )}
                 </span>
               </div>
             </>

@@ -353,6 +353,18 @@ const PositionDetailsModal: React.FC<PositionDetailsModalProps> = ({
                 </p>
               </div>
             )}
+            {position.status === "Open" && (
+              <div>
+                <label className="text-xs sm:text-sm font-medium text-muted-foreground">
+                  Capital Alocado
+                </label>
+                <p className="mt-1 text-sm sm:text-base font-medium">
+                  {formatCurrency(
+                    position.current_quantity * position.average_entry_price
+                  )}
+                </p>
+              </div>
+            )}
             <div>
               <label className="text-xs sm:text-sm font-medium text-muted-foreground">
                 {position.status === "Closed"
