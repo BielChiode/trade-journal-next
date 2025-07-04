@@ -11,6 +11,17 @@ const setToken = (token: string) => {
   }
 };
 
+// Função para limpar o estado de autenticação
+const clearAuthState = () => {
+  if (typeof window !== "undefined") {
+    localStorage.removeItem("token");
+    delete apiClient.defaults.headers.Authorization;
+    
+    // Dispara um evento customizado para notificar o AuthContext
+    window.dispatchEvent(new CustomEvent('auth:logout'));
+  }
+};
+
 const apiClient = axios.create({
   baseURL: "/api",
 });
@@ -63,9 +74,9 @@ apiClient.interceptors.response.use(
 
     // Evita loop infinito se a rota de refresh também falhar com 401
     if (originalRequest.url === '/auth/refresh') {
-        // Futuramente, chamar a função de logout aqui
         console.error("Refresh token is invalid. Logging out.");
-        window.location.href = '/login'; // Redirecionamento simples
+        clearAuthState();
+        window.location.href = '/login';
         return Promise.reject(error);
     }
 
@@ -101,9 +112,9 @@ apiClient.interceptors.response.use(
     } catch (refreshError) {
       const error = refreshError instanceof Error ? refreshError : new Error('An unknown error occurred');
       processQueue(error, null);
-      // Futuramente, chamar a função de logout aqui
       console.error("Could not refresh token. Logging out.");
-      window.location.href = '/login'; // Redirecionamento simples
+      clearAuthState();
+      window.location.href = '/login';
       return Promise.reject(refreshError);
     } finally {
       isRefreshing = false;

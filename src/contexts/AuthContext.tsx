@@ -51,6 +51,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     setLoading(false);
   }, []);
 
+  // Escuta o evento customizado de logout disparado pelo apiClient
+  useEffect(() => {
+    const handleLogout = () => {
+      setUser(null);
+      setToken(null);
+    };
+
+    window.addEventListener('auth:logout', handleLogout);
+
+    return () => {
+      window.removeEventListener('auth:logout', handleLogout);
+    };
+  }, []);
+
   const login = async (credentials: AuthCredentials) => {
     setLoading(true);
     try {

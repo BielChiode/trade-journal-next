@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
   const payload = verifyRefreshToken(refreshToken);
 
   if (!payload) {
-    return NextResponse.json({ message: "Invalid refresh token" }, { status: 403 });
+    return NextResponse.json({ message: "Invalid refresh token" }, { status: 401 });
   }
 
   const user = await prisma.user.findUnique({
@@ -20,11 +20,11 @@ export async function POST(request: NextRequest) {
   });
 
   if (!user) {
-    return NextResponse.json({ message: "User not found" }, { status: 403 });
+    return NextResponse.json({ message: "User not found" }, { status: 401 });
   }
 
   if (user.token_version !== payload.tokenVersion) {
-    return NextResponse.json({ message: "Token has been revoked" }, { status: 403 });
+    return NextResponse.json({ message: "Token has been revoked" }, { status: 401 });
   }
 
   const newAccessToken = createAccessToken(user);

@@ -21,9 +21,9 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ logout }) => {
           <Image
             src="/logo.png"
             alt="Trade Journal"
-            width={40}
+            width={60}
             height={40}
-            className="h-8 w-8 sm:h-9 sm:w-9"
+            className="h-8 w-12 sm:h-9 sm:w-14"
             priority
           />
           <span className="text-base sm:text-lg font-semibold">
