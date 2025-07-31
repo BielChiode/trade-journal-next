@@ -13,7 +13,7 @@ import Modal from "../ui/Modal";
 import PositionForm, { PositionFormData } from "../PositionForm";
 import { Button } from "../ui/Button";
 import { Position, Operation } from "../../types/trade";
-import { cn, formatCurrency, formatDate } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 import {
   getOperationsByPositionId,
   updatePosition,
@@ -22,7 +22,6 @@ import {
   executePartialExit,
   deleteOperation,
 } from "@/services/tradeService";
-import Loader from "../ui/Loader";
 import PositionIncrementForm from "./PositionIncrementForm";
 import PartialExitForm from "./PartialExitForm";
 import ConfirmationModal from "../ui/ConfirmationModal";
@@ -217,11 +216,10 @@ const PositionDetailsModal: React.FC<PositionDetailsModalProps> = ({
             <h3 className="text-xl sm:text-2xl font-bold">{position.ticker}</h3>
             {position.status === "Closed" && (
               <div
-                className={`flex items-center gap-2 px-3 py-1 rounded-full self-start sm:self-auto ${
-                  isProfit
+                className={`flex items-center gap-2 px-3 py-1 rounded-full self-start sm:self-auto ${isProfit
                     ? "bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400"
                     : "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400"
-                }`}
+                  }`}
               >
                 {isProfit ? (
                   <TrendingUp size={16} />
@@ -327,14 +325,14 @@ const PositionDetailsModal: React.FC<PositionDetailsModalProps> = ({
                             const entryPrice = position.average_entry_price;
                             const stopGain = position.stop_gain;
                             const stopLoss = position.stop_loss;
-                            
+
                             if (!entryPrice || !stopGain || !stopLoss) return "-";
-                            
+
                             const potentialGain = Math.abs(stopGain - entryPrice);
                             const potentialLoss = Math.abs(entryPrice - stopLoss);
-                            
+
                             if (potentialLoss === 0) return "-";
-                            
+
                             const payoffRatio = potentialGain / potentialLoss;
                             return `${payoffRatio.toFixed(2)} : 1`;
                           })()}
@@ -433,13 +431,12 @@ const PositionDetailsModal: React.FC<PositionDetailsModalProps> = ({
           onClose={() => setOperationToDelete(null)}
           onConfirm={handleDeleteOperation}
           title="Confirmar Exclusão de Operação"
-          message={`Tem certeza que deseja excluir esta operação (${
-            operationToDelete.operation_type === "Increment"
+          message={`Tem certeza que deseja excluir esta operação (${operationToDelete.operation_type === "Increment"
               ? "Incremento"
               : "Venda Parcial"
-          } de ${operationToDelete.quantity} @ ${formatCurrency(
-            Number(operationToDelete.price)
-          )})? Esta ação irá recalcular toda a posição.`}
+            } de ${operationToDelete.quantity} @ ${formatCurrency(
+              Number(operationToDelete.price)
+            )})? Esta ação irá recalcular toda a posição.`}
           loading={isDeleting}
         />
       )}
