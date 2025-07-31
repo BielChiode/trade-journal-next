@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
   output   = "../src/generated/prisma"
@@ -15,33 +9,33 @@ datasource db {
 }
 
 model User {
-  id            Int        @id @default(autoincrement())
-  email         String     @unique
+  id            Int         @id @default(autoincrement())
+  email         String      @unique
   password      String
-  token_version Int        @default(0)
-
-  positions Position[]
-  operations Operation[]
+  token_version Int         @default(0)
+  operations    Operation[]
+  positions     Position[]
 
   @@map("users")
 }
 
 model Position {
-  id                  Int      @id @default(autoincrement())
+  id                  Int            @id @default(autoincrement())
   userId              Int
   ticker              String
   type                PositionType
   status              PositionStatus
   average_entry_price Decimal
   current_quantity    Int
-  total_realized_pnl  Decimal  @default(0)
+  total_realized_pnl  Decimal        @default(0)
   initial_entry_date  DateTime
   last_exit_date      DateTime?
   setup               String?
   observations        String?
-
-  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  operations Operation[]
+  stop_gain           Decimal?
+  stop_loss           Decimal?
+  operations          Operation[]
+  user                User           @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("positions")
 }
@@ -56,9 +50,8 @@ model Operation {
   date           DateTime
   result         Decimal?
   observations   String?
-
-  user     User     @relation(fields: [userId], references: [id], onDelete: NoAction)
-  position Position @relation(fields: [positionId], references: [id], onDelete: Cascade)
+  position       Position      @relation(fields: [positionId], references: [id], onDelete: Cascade)
+  user           User          @relation(fields: [userId], references: [id], onDelete: NoAction)
 
   @@map("operations")
 }

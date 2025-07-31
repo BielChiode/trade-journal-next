@@ -428,7 +428,7 @@ const PositionDetailsModal: React.FC<PositionDetailsModalProps> = ({
             </div>
           </div>
 
-          {(position.setup || position.observations) && (
+          {(position.setup || position.observations || position.stop_gain || position.stop_loss) && (
             <div className="space-y-3 pt-4 mt-4 border-t">
               {position.setup && (
                 <div>
@@ -446,6 +446,62 @@ const PositionDetailsModal: React.FC<PositionDetailsModalProps> = ({
                   <p className="mt-1 text-sm sm:text-base whitespace-pre-wrap">
                     {position.observations}
                   </p>
+                </div>
+              )}
+              {(position.stop_gain || position.stop_loss) && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <span className="text-xs sm:text-sm font-medium text-muted-foreground">
+                      Stop Gain/Loss
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {position.stop_gain && (
+                      <div>
+                        <label className="text-xs sm:text-sm font-medium text-muted-foreground">
+                          Stop Gain
+                        </label>
+                        <p className="mt-1 text-sm sm:text-base font-medium text-green-600">
+                          {formatCurrency(position.stop_gain)}
+                        </p>
+                      </div>
+                    )}
+                    {position.stop_loss && (
+                      <div>
+                        <label className="text-xs sm:text-sm font-medium text-muted-foreground">
+                          Stop Loss
+                        </label>
+                        <p className="mt-1 text-sm sm:text-base font-medium text-red-600">
+                          {formatCurrency(position.stop_loss)}
+                        </p>
+                      </div>
+                    )}
+                    {position.stop_gain && position.stop_loss && (
+                      <div>
+                        <label className="text-xs sm:text-sm font-medium text-muted-foreground">
+                          Payoff (R:R)
+                        </label>
+                        <p className="mt-1 text-sm sm:text-base font-medium">
+                          {(() => {
+                            const entryPrice = position.average_entry_price;
+                            const stopGain = position.stop_gain;
+                            const stopLoss = position.stop_loss;
+                            
+                            if (!entryPrice || !stopGain || !stopLoss) return "-";
+                            
+                            const potentialGain = Math.abs(stopGain - entryPrice);
+                            const potentialLoss = Math.abs(entryPrice - stopLoss);
+                            
+                            if (potentialLoss === 0) return "-";
+                            
+                            const payoffRatio = potentialGain / potentialLoss;
+                            return `${payoffRatio.toFixed(2)} : 1`;
+                          })()}
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>

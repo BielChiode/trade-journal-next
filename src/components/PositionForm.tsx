@@ -20,6 +20,8 @@ export type PositionFormData = {
   quantity: number;
   setup?: string;
   observations?: string;
+  stop_gain?: number;
+  stop_loss?: number;
 };
 
 interface PositionFormProps {
@@ -47,7 +49,13 @@ const PositionForm: React.FC<PositionFormProps> = ({
     quantity: (initialData as PositionFormData)?.quantity || 0,
     setup: initialData?.setup || "",
     observations: initialData?.observations || "",
+    stop_gain: (initialData as PositionFormData)?.stop_gain || undefined,
+    stop_loss: (initialData as PositionFormData)?.stop_loss || undefined,
   });
+
+  const [isBracketOrder, setIsBracketOrder] = useState<boolean>(
+    !!(initialData?.stop_gain || initialData?.stop_loss)
+  );
 
   const [tickerSuggestions, setTickerSuggestions] = useState<
     { symbol: string; instrument_name: string; exchange: string }[]
@@ -120,10 +128,24 @@ const PositionForm: React.FC<PositionFormProps> = ({
     setFormData((prev) => ({
       ...prev,
       [name]:
-        name === "price" || name === "quantity"
+        name === "price" || name === "quantity" || name === "stop_gain" || name === "stop_loss"
           ? parseFloat(value) || ""
           : value,
     }));
+  };
+
+  const handleBracketOrderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const checked = e.target.checked;
+    setIsBracketOrder(checked);
+
+    if (!checked) {
+      // Limpar os campos quando desmarcar o checkbox
+      setFormData((prev) => ({
+        ...prev,
+        stop_gain: undefined,
+        stop_loss: undefined,
+      }));
+    }
   };
 
   const handleTickerSelect = (ticker: {
@@ -156,9 +178,29 @@ const PositionForm: React.FC<PositionFormProps> = ({
       alert("Quantidade e Preço devem ser maiores que zero.");
       return;
     }
+
+    // Validação para Ordem Bracket
+    if (isBracketOrder) {
+      if (!formData.stop_gain || !formData.stop_loss) {
+        alert("Para usar Ordem Bracket, é necessário preencher Stop Gain e Stop Loss.");
+        return;
+      }
+      if (formData.stop_gain <= 0 || formData.stop_loss <= 0) {
+        alert("Stop Gain e Stop Loss devem ser maiores que zero.");
+        return;
+      }
+    }
+
     setLoading(true);
     try {
-      await onSubmit(formData);
+      // Remover stop_gain e stop_loss se não for Ordem Bracket
+      const dataToSubmit = isBracketOrder ? formData : {
+        ...formData,
+        stop_gain: undefined,
+        stop_loss: undefined,
+      };
+
+      await onSubmit(dataToSubmit);
     } catch (error) {
       console.error("Error saving trade:", error);
     } finally {
@@ -288,6 +330,57 @@ const PositionForm: React.FC<PositionFormProps> = ({
           disabled={isEditRestricted}
         />
       </div>
+
+      <div className="flex items-center space-x-2">
+        <input
+          type="checkbox"
+          id="bracketOrder"
+          checked={isBracketOrder}
+          onChange={handleBracketOrderChange}
+          disabled={isEditRestricted}
+          className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary focus:ring-offset-0"
+        />
+        <label htmlFor="bracketOrder" className="text-sm font-medium text-muted-foreground">
+          Stop Gain/Loss
+        </label>
+      </div>
+
+      {isBracketOrder && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+          <div>
+            <label className="block text-sm font-medium text-muted-foreground mb-1">
+              Stop Gain *
+            </label>
+            <Input
+              type="number"
+              step="0.01"
+              name="stop_gain"
+              value={formData.stop_gain || ""}
+              onChange={handleChange}
+              placeholder="0.00"
+              className="text-base sm:text-sm"
+              required={isBracketOrder}
+              disabled={isEditRestricted}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-muted-foreground mb-1">
+              Stop Loss *
+            </label>
+            <Input
+              type="number"
+              step="0.01"
+              name="stop_loss"
+              value={formData.stop_loss || ""}
+              onChange={handleChange}
+              placeholder="0.00"
+              className="text-base sm:text-sm"
+              required={isBracketOrder}
+              disabled={isEditRestricted}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Setup */}
       <div>

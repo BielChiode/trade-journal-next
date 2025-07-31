@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { ticker, type, quantity, price, date, setup, observations } = body;
+    const { ticker, type, quantity, price, date, setup, observations, stop_gain, stop_loss } = body;
 
     if (!ticker || !type || !quantity || !price || !date) {
       return NextResponse.json({ message: "Missing required fields" }, { status: 400 });
@@ -61,6 +61,8 @@ export async function POST(request: NextRequest) {
         initial_entry_date: new Date(date),
         setup,
         observations,
+        stop_gain: stop_gain ? parseFloat(stop_gain) : null,
+        stop_loss: stop_loss ? parseFloat(stop_loss) : null,
         operations: {
           create: {
             user: { connect: { id: userId } },
