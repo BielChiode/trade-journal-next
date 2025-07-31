@@ -31,6 +31,8 @@ const ExitSection: React.FC<ExitSectionProps> = ({
   exitCalendarRef,
   isEditRestricted = false,
 }) => {
+  if (isEditRestricted) return null;
+
   return (
     <>
       <div className="flex items-center space-x-2">
