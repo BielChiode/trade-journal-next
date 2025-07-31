@@ -1,5 +1,5 @@
 import React from "react";
-import { Position } from "../types/trade";
+import { Position } from "../../types/trade";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 

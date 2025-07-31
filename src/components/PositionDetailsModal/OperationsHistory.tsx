@@ -1,9 +1,9 @@
 import React from "react";
 import { ArrowUp, ArrowDown, Trash2 } from "lucide-react";
-import { Button } from "./ui/Button";
-import { Position, Operation } from "../types/trade";
+import { Button } from "../ui/Button";
+import { Position, Operation } from "../../types/trade";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import Loader from "./ui/Loader";
+import Loader from "../ui/Loader";
 
 interface OperationsHistoryProps {
   operations: Operation[];

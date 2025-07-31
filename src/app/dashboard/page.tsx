@@ -10,7 +10,6 @@ import {
 } from "@/services/tradeService";
 import { Button } from "@/components/ui/Button";
 import Modal from "@/components/ui/Modal";
-import PositionDetailsModal from "@/components/PositionDetailsModal";
 import { Position } from "@/types/trade";
 import { useAuth } from "@/contexts/AuthContext";
 import DashboardHeader from "./components/DashboardHeader";
@@ -19,6 +18,7 @@ import PositionsHistory from "./components/PositionsHistory";
 import ConfirmationModal from "@/components/ui/ConfirmationModal";
 import Loader from "@/components/ui/Loader";
 import PositionForm, { PositionFormData } from "@/components/PositionForm";
+import PositionDetailsModal from "@/components/PositionDetailsModal";
 
 const DashboardPage: React.FC = () => {
   const { logout, isAuthenticated, loading } = useAuth();

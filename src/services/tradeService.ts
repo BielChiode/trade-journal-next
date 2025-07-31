@@ -29,6 +29,9 @@ type CreatePositionData = {
   observations?: string;
   stop_gain?: number;
   stop_loss?: number;
+  exit_price?: number;
+  exit_date?: string;
+  is_closed?: boolean;
 };
 
 export const getPositions = async (): Promise<Position[]> => {
