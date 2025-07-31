@@ -1,12 +1,14 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { Button } from "./ui/Button";
+import { Button } from "../ui/Button";
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
 import ButtonLoader from "@/components/ui/ButtonLoader";
-import { Input } from "./ui/Input";
+import { Input } from "../ui/Input";
 import { Position } from "@/types/trade";
 import { searchTickers } from "@/services/tradeService";
 import { useDebounce } from "@/hooks/useDebounce";
+import BracketOrderSection from "./BracketOrderSection";
+import ExitSection from "./ExitSection";
 
 type ValuePiece = Date | null;
 type Value = ValuePiece | [ValuePiece, ValuePiece];
@@ -22,6 +24,9 @@ export type PositionFormData = {
   observations?: string;
   stop_gain?: number;
   stop_loss?: number;
+  exit_price?: number;
+  exit_date?: string;
+  is_closed?: boolean;
 };
 
 interface PositionFormProps {
@@ -51,10 +56,17 @@ const PositionForm: React.FC<PositionFormProps> = ({
     observations: initialData?.observations || "",
     stop_gain: (initialData as PositionFormData)?.stop_gain || undefined,
     stop_loss: (initialData as PositionFormData)?.stop_loss || undefined,
+    exit_price: (initialData as PositionFormData)?.exit_price || undefined,
+    exit_date: (initialData as PositionFormData)?.exit_date || undefined,
+    is_closed: (initialData as PositionFormData)?.is_closed || false,
   });
 
   const [isBracketOrder, setIsBracketOrder] = useState<boolean>(
     !!(initialData?.stop_gain || initialData?.stop_loss)
+  );
+
+  const [isClosedPosition, setIsClosedPosition] = useState<boolean>(
+    !!((initialData as PositionFormData)?.exit_price || (initialData as PositionFormData)?.exit_date)
   );
 
   const [tickerSuggestions, setTickerSuggestions] = useState<
@@ -64,7 +76,9 @@ const PositionForm: React.FC<PositionFormProps> = ({
 
   const [loading, setLoading] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
+  const [showExitCalendar, setShowExitCalendar] = useState(false);
   const calendarRef = useRef<HTMLDivElement>(null);
+  const exitCalendarRef = useRef<HTMLDivElement>(null);
   const tickerInputRef = useRef<HTMLDivElement>(null);
   const hasUserStartedTyping = useRef(false);
   const skipNextDebounce = useRef(false);
@@ -104,6 +118,12 @@ const PositionForm: React.FC<PositionFormProps> = ({
         setShowCalendar(false);
       }
       if (
+        exitCalendarRef.current &&
+        !exitCalendarRef.current.contains(event.target as Node)
+      ) {
+        setShowExitCalendar(false);
+      }
+      if (
         tickerInputRef.current &&
         !tickerInputRef.current.contains(event.target as Node)
       ) {
@@ -128,7 +148,7 @@ const PositionForm: React.FC<PositionFormProps> = ({
     setFormData((prev) => ({
       ...prev,
       [name]:
-        name === "price" || name === "quantity" || name === "stop_gain" || name === "stop_loss"
+        name === "price" || name === "quantity" || name === "stop_gain" || name === "stop_loss" || name === "exit_price"
           ? parseFloat(value) || ""
           : value,
     }));
@@ -148,6 +168,21 @@ const PositionForm: React.FC<PositionFormProps> = ({
     }
   };
 
+  const handleClosedPositionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const checked = e.target.checked;
+    setIsClosedPosition(checked);
+
+    if (!checked) {
+      // Limpar os campos quando desmarcar o checkbox
+      setFormData((prev) => ({
+        ...prev,
+        exit_price: undefined,
+        exit_date: undefined,
+        is_closed: false,
+      }));
+    }
+  };
+
   const handleTickerSelect = (ticker: {
     symbol: string;
     instrument_name: string;
@@ -161,15 +196,25 @@ const PositionForm: React.FC<PositionFormProps> = ({
     setTickerSuggestions([]);
   };
 
-  const handleDateChange = (value: Value) => {
+  const handleDateChange = (value: Value, isExitDate: boolean = false) => {
     const newDate = Array.isArray(value) ? value[0] : value;
     if (newDate) {
-      setFormData((prev) => ({
-        ...prev,
-        date: newDate.toISOString().split("T")[0],
-      }));
+      const dateString = newDate.toISOString().split("T")[0];
+      
+      if (isExitDate) {
+        setFormData((prev) => ({
+          ...prev,
+          exit_date: dateString,
+        }));
+        setShowExitCalendar(false);
+      } else {
+        setFormData((prev) => ({
+          ...prev,
+          date: dateString,
+        }));
+        setShowCalendar(false);
+      }
     }
-    setShowCalendar(false);
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -191,14 +236,41 @@ const PositionForm: React.FC<PositionFormProps> = ({
       }
     }
 
+    // Validação para Posição Fechada
+    if (isClosedPosition) {
+      if (!formData.exit_price || !formData.exit_date) {
+        alert("Para registrar saída, é necessário preencher Preço de Saída e Data de Saída.");
+        return;
+      }
+      if (formData.exit_price <= 0) {
+        alert("Preço de Saída deve ser maior que zero.");
+        return;
+      }
+    }
+
     setLoading(true);
     try {
       // Remover stop_gain e stop_loss se não for Ordem Bracket
-      const dataToSubmit = isBracketOrder ? formData : {
+      let dataToSubmit = isBracketOrder ? formData : {
         ...formData,
         stop_gain: undefined,
         stop_loss: undefined,
       };
+
+      // Remover campos de saída se não for posição fechada
+      if (!isClosedPosition) {
+        dataToSubmit = {
+          ...dataToSubmit,
+          exit_price: undefined,
+          exit_date: undefined,
+          is_closed: false,
+        };
+      } else {
+        dataToSubmit = {
+          ...dataToSubmit,
+          is_closed: true,
+        };
+      }
 
       await onSubmit(dataToSubmit);
     } catch (error) {
@@ -288,7 +360,7 @@ const PositionForm: React.FC<PositionFormProps> = ({
             {showCalendar && (
               <div ref={calendarRef} className="absolute z-10 mt-1">
                 <Calendar
-                  onChange={handleDateChange}
+                  onChange={(value) => handleDateChange(value)}
                   value={formData.date ? new Date(formData.date) : null}
                   locale="pt-BR"
                 />
@@ -331,56 +403,27 @@ const PositionForm: React.FC<PositionFormProps> = ({
         />
       </div>
 
-      <div className="flex items-center space-x-2">
-        <input
-          type="checkbox"
-          id="bracketOrder"
-          checked={isBracketOrder}
-          onChange={handleBracketOrderChange}
-          disabled={isEditRestricted}
-          className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary focus:ring-offset-0"
-        />
-        <label htmlFor="bracketOrder" className="text-sm font-medium text-muted-foreground">
-          Stop Gain/Loss
-        </label>
-      </div>
+      <BracketOrderSection
+        isBracketOrder={isBracketOrder}
+        onBracketOrderChange={handleBracketOrderChange}
+        stopGain={formData.stop_gain}
+        stopLoss={formData.stop_loss}
+        onFieldChange={handleChange}
+        isEditRestricted={isEditRestricted}
+      />
 
-      {isBracketOrder && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-          <div>
-            <label className="block text-sm font-medium text-muted-foreground mb-1">
-              Stop Gain *
-            </label>
-            <Input
-              type="number"
-              step="0.01"
-              name="stop_gain"
-              value={formData.stop_gain || ""}
-              onChange={handleChange}
-              placeholder="0.00"
-              className="text-base sm:text-sm"
-              required={isBracketOrder}
-              disabled={isEditRestricted}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-muted-foreground mb-1">
-              Stop Loss *
-            </label>
-            <Input
-              type="number"
-              step="0.01"
-              name="stop_loss"
-              value={formData.stop_loss || ""}
-              onChange={handleChange}
-              placeholder="0.00"
-              className="text-base sm:text-sm"
-              required={isBracketOrder}
-              disabled={isEditRestricted}
-            />
-          </div>
-        </div>
-      )}
+      <ExitSection
+        isClosedPosition={isClosedPosition}
+        onClosedPositionChange={handleClosedPositionChange}
+        exitPrice={formData.exit_price}
+        exitDate={formData.exit_date}
+        onFieldChange={handleChange}
+        onDateChange={handleDateChange}
+        showExitCalendar={showExitCalendar}
+        onShowExitCalendar={setShowExitCalendar}
+        exitCalendarRef={exitCalendarRef}
+        isEditRestricted={isEditRestricted}
+      />
 
       {/* Setup */}
       <div>
