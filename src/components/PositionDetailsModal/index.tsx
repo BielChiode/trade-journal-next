@@ -23,8 +23,8 @@ import {
   deleteOperation,
 } from "@/services/tradeService";
 import Loader from "../ui/Loader";
-import PositionIncrementForm from "../PositionIncrementForm";
-import PartialExitForm from "../PartialExitForm";
+import PositionIncrementForm from "./PositionIncrementForm";
+import PartialExitForm from "./PartialExitForm";
 import ConfirmationModal from "../ui/ConfirmationModal";
 import OperationsHistory from "./OperationsHistory";
 import PositionMetrics from "./PositionMetrics";
