@@ -35,7 +35,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       if (!position) {
         throw new Error("Position not found");
       }
-      if (quantity > position.current_quantity) {
+      if (quantity > position.current_quantity.toNumber()) {
         throw new Error("Exit quantity cannot be greater than current quantity");
       }
 
@@ -47,7 +47,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
         operationResult = (avgEntryPrice - price) * quantity;
       }
       
-      const newQuantity = position.current_quantity - quantity;
+      const newQuantity = position.current_quantity.toNumber() - quantity;
       const newTotalRealizedPnl = position.total_realized_pnl.toNumber() + operationResult;
       const newStatus = newQuantity === 0 ? PositionStatus.Closed : PositionStatus.Open;
 

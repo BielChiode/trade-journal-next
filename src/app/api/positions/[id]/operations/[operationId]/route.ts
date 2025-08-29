@@ -28,7 +28,7 @@ async function recalculatePosition(positionId: number, tx: any) {
 
   for (const op of operations) {
     const price = op.price.toNumber();
-    const quantity = op.quantity;
+    const quantity = op.quantity.toNumber();
 
     if (op.operation_type === "Entry" || op.operation_type === "Increment") {
       totalValue += price * quantity;

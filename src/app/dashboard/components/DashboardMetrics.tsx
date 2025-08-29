@@ -43,7 +43,7 @@ const DashboardMetrics: React.FC<DashboardMetricsProps> = ({
 
     const allocatedCapital = positions
         .filter((p) => p.status === 'Open')
-        .reduce((acc, p) => acc + p.current_quantity * p.average_entry_price, 0);
+        .reduce((acc, p) => acc + Number(p.current_quantity) * Number(p.average_entry_price), 0);
 
     const handleCapitalEdit = () => {
         if (isEditingCapital) {

@@ -129,7 +129,7 @@ const PositionCard: React.FC<PositionCardProps> = ({ position, onClick }) => {
             <>
               <div className="flex justify-between items-center text-xs sm:text-sm">
                 <span className="text-muted-foreground">Qtd. Atual:</span>
-                <span className="font-medium">{position.current_quantity}</span>
+                <span className="font-medium">{Number(position.current_quantity)}</span>
               </div>
               <div className="flex justify-between items-center text-xs sm:text-sm">
                 <span className="text-muted-foreground">
@@ -143,7 +143,7 @@ const PositionCard: React.FC<PositionCardProps> = ({ position, onClick }) => {
                 <span className="text-muted-foreground">Capital Alocado:</span>
                 <span className="font-medium">
                   {formatCurrency(
-                    position.current_quantity * position.average_entry_price
+                    Number(position.current_quantity) * Number(position.average_entry_price)
                   )}
                 </span>
               </div>

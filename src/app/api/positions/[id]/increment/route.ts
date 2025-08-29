@@ -39,10 +39,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
       // 2. Calcular novos valores
       const currentTotalValue =
-        position.average_entry_price.toNumber() * position.current_quantity;
+        position.average_entry_price.toNumber() * position.current_quantity.toNumber();
       const incrementValue = price * quantity;
 
-      const newQuantity = position.current_quantity + quantity;
+      const newQuantity = position.current_quantity.toNumber() + quantity;
       const newAverageEntryPrice =
         (currentTotalValue + incrementValue) / newQuantity;
 
