@@ -14,7 +14,7 @@ interface PartialExitFormProps {
 }
 
 const PartialExitForm: React.FC<PartialExitFormProps> = ({ onSubmit, onCancel, remainingQuantity }) => {
-  const [quantity, setQuantity] = useState<number | ''>('');
+  const [quantity, setQuantity] = useState<string>('');
   const [price, setPrice] = useState<number | ''>('');
   const [date, setDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [loading, setLoading] = useState(false);
@@ -47,11 +47,11 @@ const PartialExitForm: React.FC<PartialExitFormProps> = ({ onSubmit, onCancel, r
       alert('Por favor, preencha todos os campos.');
       return;
     }
-    if (quantity <= 0) {
+    if (parseFloat(quantity) <= 0) {
       alert('A quantidade deve ser maior que zero.');
       return;
     }
-    if (quantity > remainingQuantity) {
+    if (parseFloat(quantity) > remainingQuantity) {
       alert(`A quantidade não pode ser maior que a posição atual (${remainingQuantity}).`);
       return;
     }
@@ -59,7 +59,7 @@ const PartialExitForm: React.FC<PartialExitFormProps> = ({ onSubmit, onCancel, r
     setLoading(true);
     try {
       await onSubmit({
-        quantity: Number(quantity),
+        quantity: parseFloat(quantity),
         price: Number(price),
         date,
       });
@@ -79,7 +79,7 @@ const PartialExitForm: React.FC<PartialExitFormProps> = ({ onSubmit, onCancel, r
         <Input
           type="number"
           value={quantity}
-          onChange={(e) => setQuantity(Number(e.target.value) || '')}
+          onChange={(e) => setQuantity(e.target.value)}
           placeholder="Ex: 50"
           required
           disabled={loading}

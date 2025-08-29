@@ -14,7 +14,7 @@ interface PositionIncrementFormProps {
 }
 
 const PositionIncrementForm: React.FC<PositionIncrementFormProps> = ({ onSubmit, onCancel, currentQuantity }) => {
-  const [quantity, setQuantity] = useState<number | ''>('');
+  const [quantity, setQuantity] = useState<string>('');
   const [price, setPrice] = useState<number | ''>('');
   const [date, setDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [loading, setLoading] = useState(false);
@@ -47,7 +47,7 @@ const PositionIncrementForm: React.FC<PositionIncrementFormProps> = ({ onSubmit,
       alert('Por favor, preencha todos os campos.');
       return;
     }
-    if (quantity <= 0) {
+    if (parseFloat(quantity) <= 0) {
       alert('A quantidade deve ser maior que zero.');
       return;
     }
@@ -55,7 +55,7 @@ const PositionIncrementForm: React.FC<PositionIncrementFormProps> = ({ onSubmit,
     setLoading(true);
     try {
       await onSubmit({
-        quantity: Number(quantity),
+        quantity: parseFloat(quantity),
         price: Number(price),
         date,
       });
@@ -75,7 +75,7 @@ const PositionIncrementForm: React.FC<PositionIncrementFormProps> = ({ onSubmit,
         <Input
           type="number"
           value={quantity}
-          onChange={(e) => setQuantity(Number(e.target.value) || '')}
+          onChange={(e) => setQuantity(e.target.value)}
           placeholder="Ex: 50"
           required
           disabled={loading}
