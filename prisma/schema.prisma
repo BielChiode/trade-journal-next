@@ -26,7 +26,7 @@ model Position {
   type                PositionType
   status              PositionStatus
   average_entry_price Decimal
-  current_quantity    Int
+  current_quantity    Decimal
   total_realized_pnl  Decimal        @default(0)
   initial_entry_date  DateTime
   last_exit_date      DateTime?
@@ -45,7 +45,7 @@ model Operation {
   positionId     Int
   userId         Int
   operation_type OperationType
-  quantity       Int
+  quantity       Decimal
   price          Decimal
   date           DateTime
   result         Decimal?

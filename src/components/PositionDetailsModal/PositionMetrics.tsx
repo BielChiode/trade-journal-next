@@ -69,7 +69,7 @@ const PositionMetrics: React.FC<PositionMetricsProps> = ({
           </label>
           <p className="mt-1 text-sm sm:text-base font-medium">
             {formatCurrency(
-              position.current_quantity * position.average_entry_price
+              Number(position.current_quantity) * Number(position.average_entry_price)
             )}
           </p>
         </div>
@@ -83,7 +83,7 @@ const PositionMetrics: React.FC<PositionMetricsProps> = ({
         <p className="mt-1 text-sm sm:text-base font-medium">
           {position.status === "Closed"
             ? closedPositionMetrics.total_quantity
-            : position.current_quantity}
+            : Number(position.current_quantity)}
         </p>
       </div>
       <div>

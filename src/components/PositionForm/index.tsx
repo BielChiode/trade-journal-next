@@ -149,7 +149,7 @@ const PositionForm: React.FC<PositionFormProps> = ({
       ...prev,
       [name]:
         name === "price" || name === "quantity" || name === "stop_gain" || name === "stop_loss" || name === "exit_price"
-          ? parseFloat(value) || ""
+          ? value === "" ? "" : parseFloat(value) || 0
           : value,
     }));
   };

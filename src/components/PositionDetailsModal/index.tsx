@@ -155,18 +155,18 @@ const PositionDetailsModal: React.FC<PositionDetailsModalProps> = ({
     );
 
     const total_quantity = entryOperations.reduce(
-      (acc, op) => acc + op.quantity,
+      (acc, op) => acc + Number(op.quantity),
       0
     );
 
     let average_exit_price = 0;
     if (exitOperations.length > 0) {
       const totalExitValue = exitOperations.reduce(
-        (acc, op) => acc + op.price * op.quantity,
+        (acc, op) => acc + Number(op.price) * Number(op.quantity),
         0
       );
       const totalExitQuantity = exitOperations.reduce(
-        (acc, op) => acc + op.quantity,
+        (acc, op) => acc + Number(op.quantity),
         0
       );
       average_exit_price =
@@ -184,9 +184,9 @@ const PositionDetailsModal: React.FC<PositionDetailsModalProps> = ({
       quantity:
         position.status === "Closed"
           ? closedPositionMetrics.total_quantity
-          : position.current_quantity,
+          : Number(position.current_quantity),
       // Convertemos o preço médio para número
-      price: position.average_entry_price,
+      price: Number(position.average_entry_price),
       // Formatamos a data
       date: position.initial_entry_date.toISOString().split("T")[0],
     };
@@ -395,7 +395,7 @@ const PositionDetailsModal: React.FC<PositionDetailsModalProps> = ({
           <PositionIncrementForm
             onSubmit={handleIncrementSubmit}
             onCancel={() => setIsIncrementModalOpen(false)}
-            currentQuantity={position.current_quantity}
+            currentQuantity={Number(position.current_quantity)}
           />
         </Modal>
       )}
@@ -409,7 +409,7 @@ const PositionDetailsModal: React.FC<PositionDetailsModalProps> = ({
           <PartialExitForm
             onSubmit={handlePartialExitSubmit}
             onCancel={() => setIsPartialExitModalOpen(false)}
-            remainingQuantity={position.current_quantity}
+            remainingQuantity={Number(position.current_quantity)}
           />
         </Modal>
       )}
