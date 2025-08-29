@@ -1,19 +1,19 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Button } from './ui/Button';
-import ButtonLoader from './ui/ButtonLoader';
-import { Input } from './ui/Input';
+import { Button } from '../ui/Button';
+import ButtonLoader from '../ui/ButtonLoader';
+import { Input } from '../ui/Input';
 import Calendar from 'react-calendar';
 
 type ValuePiece = Date | null;
 type Value = ValuePiece | [ValuePiece, ValuePiece];
 
-interface PositionIncrementFormProps {
+interface PartialExitFormProps {
   onSubmit: (data: { quantity: number; price: number; date: string }) => Promise<void>;
   onCancel: () => void;
-  currentQuantity: number;
+  remainingQuantity: number;
 }
 
-const PositionIncrementForm: React.FC<PositionIncrementFormProps> = ({ onSubmit, onCancel, currentQuantity }) => {
+const PartialExitForm: React.FC<PartialExitFormProps> = ({ onSubmit, onCancel, remainingQuantity }) => {
   const [quantity, setQuantity] = useState<number | ''>('');
   const [price, setPrice] = useState<number | ''>('');
   const [date, setDate] = useState<string>(new Date().toISOString().split('T')[0]);
@@ -51,6 +51,10 @@ const PositionIncrementForm: React.FC<PositionIncrementFormProps> = ({ onSubmit,
       alert('A quantidade deve ser maior que zero.');
       return;
     }
+    if (quantity > remainingQuantity) {
+      alert(`A quantidade não pode ser maior que a posição atual (${remainingQuantity}).`);
+      return;
+    }
 
     setLoading(true);
     try {
@@ -60,7 +64,7 @@ const PositionIncrementForm: React.FC<PositionIncrementFormProps> = ({ onSubmit,
         date,
       });
     } catch (error) {
-        console.error("Error on position increment submission", error);
+        console.error("Error on partial exit submission", error);
     } finally {
         setLoading(false);
     }
@@ -70,7 +74,7 @@ const PositionIncrementForm: React.FC<PositionIncrementFormProps> = ({ onSubmit,
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
         <label className="block text-sm font-medium text-muted-foreground mb-1">
-          Quantidade a Incrementar (Atual: {currentQuantity}) *
+          Quantidade da Saída (Restante: {remainingQuantity}) *
         </label>
         <Input
           type="number"
@@ -83,7 +87,7 @@ const PositionIncrementForm: React.FC<PositionIncrementFormProps> = ({ onSubmit,
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-muted-foreground mb-1">Preço de Entrada *</label>
+          <label className="block text-sm font-medium text-muted-foreground mb-1">Preço de Saída *</label>
           <Input
             type="number"
             step="0.01"
@@ -95,7 +99,7 @@ const PositionIncrementForm: React.FC<PositionIncrementFormProps> = ({ onSubmit,
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-muted-foreground mb-1">Data de Entrada *</label>
+          <label className="block text-sm font-medium text-muted-foreground mb-1">Data de Saída *</label>
           <div className="relative">
             <Input
               type="text"
@@ -123,11 +127,11 @@ const PositionIncrementForm: React.FC<PositionIncrementFormProps> = ({ onSubmit,
           Cancelar
         </Button>
         <Button type="submit" disabled={loading}>
-          {loading ? <ButtonLoader text="Salvando..." /> : 'Confirmar Incremento'}
+          {loading ? <ButtonLoader text="Salvando..." /> : 'Confirmar Saída'}
         </Button>
       </div>
     </form>
   );
 };
 
-export default PositionIncrementForm; 
+export default PartialExitForm; 

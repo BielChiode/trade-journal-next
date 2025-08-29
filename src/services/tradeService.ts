@@ -27,6 +27,11 @@ type CreatePositionData = {
   quantity: number;
   setup?: string;
   observations?: string;
+  stop_gain?: number;
+  stop_loss?: number;
+  exit_price?: number;
+  exit_date?: string;
+  is_closed?: boolean;
 };
 
 export const getPositions = async (): Promise<Position[]> => {
@@ -39,7 +44,7 @@ export const addPosition = (positionData: CreatePositionData) =>
 
 export const updatePosition = (
   positionId: number,
-  data: { setup?: string; observations?: string }
+  data: { setup?: string; observations?: string; stop_gain?: number; stop_loss?: number }
 ) => apiClient.put(`/positions/${positionId}`, data);
 
 export const getOperationsByPositionId = async (

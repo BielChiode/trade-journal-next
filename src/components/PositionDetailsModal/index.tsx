@@ -6,16 +6,14 @@ import {
   TrendingDown,
   CheckCircle,
   Clock,
-  ArrowUp,
-  ArrowDown,
   PlusCircle,
   CircleMinus,
 } from "lucide-react";
-import Modal from "./ui/Modal";
-import PositionForm, { PositionFormData } from "./PositionForm";
-import { Button } from "./ui/Button";
-import { Position, Operation } from "../types/trade";
-import { cn, formatCurrency, formatDate } from "@/lib/utils";
+import Modal from "../ui/Modal";
+import PositionForm, { PositionFormData } from "../PositionForm";
+import { Button } from "../ui/Button";
+import { Position, Operation } from "../../types/trade";
+import { cn, formatCurrency } from "@/lib/utils";
 import {
   getOperationsByPositionId,
   updatePosition,
@@ -24,10 +22,11 @@ import {
   executePartialExit,
   deleteOperation,
 } from "@/services/tradeService";
-import Loader from "./ui/Loader";
 import PositionIncrementForm from "./PositionIncrementForm";
 import PartialExitForm from "./PartialExitForm";
-import ConfirmationModal from "./ui/ConfirmationModal";
+import ConfirmationModal from "../ui/ConfirmationModal";
+import OperationsHistory from "./OperationsHistory";
+import PositionMetrics from "./PositionMetrics";
 
 interface PositionDetailsModalProps {
   position: Position;
@@ -156,18 +155,18 @@ const PositionDetailsModal: React.FC<PositionDetailsModalProps> = ({
     );
 
     const total_quantity = entryOperations.reduce(
-      (acc, op) => acc + op.quantity,
+      (acc, op) => acc + Number(op.quantity),
       0
     );
 
     let average_exit_price = 0;
     if (exitOperations.length > 0) {
       const totalExitValue = exitOperations.reduce(
-        (acc, op) => acc + op.price * op.quantity,
+        (acc, op) => acc + Number(op.price) * Number(op.quantity),
         0
       );
       const totalExitQuantity = exitOperations.reduce(
-        (acc, op) => acc + op.quantity,
+        (acc, op) => acc + Number(op.quantity),
         0
       );
       average_exit_price =
@@ -185,9 +184,9 @@ const PositionDetailsModal: React.FC<PositionDetailsModalProps> = ({
       quantity:
         position.status === "Closed"
           ? closedPositionMetrics.total_quantity
-          : position.current_quantity,
+          : Number(position.current_quantity),
       // Convertemos o preço médio para número
-      price: position.average_entry_price,
+      price: Number(position.average_entry_price),
       // Formatamos a data
       date: position.initial_entry_date.toISOString().split("T")[0],
     };
@@ -217,11 +216,10 @@ const PositionDetailsModal: React.FC<PositionDetailsModalProps> = ({
             <h3 className="text-xl sm:text-2xl font-bold">{position.ticker}</h3>
             {position.status === "Closed" && (
               <div
-                className={`flex items-center gap-2 px-3 py-1 rounded-full self-start sm:self-auto ${
-                  isProfit
+                className={`flex items-center gap-2 px-3 py-1 rounded-full self-start sm:self-auto ${isProfit
                     ? "bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400"
                     : "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400"
-                }`}
+                  }`}
               >
                 {isProfit ? (
                   <TrendingUp size={16} />
@@ -255,180 +253,20 @@ const PositionDetailsModal: React.FC<PositionDetailsModalProps> = ({
           </div>
 
           {operations.length > 1 && (
-            <div className="space-y-3 rounded-md border p-3">
-              <h4 className="font-semibold text-base">Histórico da Posição</h4>
-              {isLoading ? (
-                <Loader />
-              ) : (
-                operations.map((op) => {
-                  if (op.operation_type === "Entry") return null;
-                  const isIncrement = op.operation_type === "Increment";
-                  const profit = op.result && op.result > 0;
-
-                  let percentageResult = 0;
-                  if (
-                    !isIncrement &&
-                    op.result != null &&
-                    op.quantity > 0 &&
-                    position.average_entry_price > 0
-                  ) {
-                    const pnlPerShare = op.result / op.quantity;
-                    percentageResult =
-                      pnlPerShare / position.average_entry_price;
-                  }
-
-                  return (
-                    <div
-                      key={op.id}
-                      className="flex justify-between items-center text-sm py-1 group"
-                    >
-                      <div className="flex items-center gap-2">
-                        {isIncrement ? (
-                          <ArrowUp size={18} className="text-green-500" />
-                        ) : (
-                          <ArrowDown
-                            size={18}
-                            className={
-                              profit ? "text-green-500" : "text-red-500"
-                            }
-                          />
-                        )}
-                        <div>
-                          <p className="font-medium text-foreground">
-                            {isIncrement ? "Incremento" : "Venda Parcial"}:{" "}
-                            {op.quantity} @ {formatCurrency(op.price)}
-                          </p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">
-                            Em {formatDate(op.date)}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {!isIncrement && op.result != null && (
-                          <div className="text-right">
-                            <span
-                              className={`font-semibold ${
-                                profit ? "text-green-600" : "text-red-600"
-                              }`}
-                            >
-                              {profit ? "+" : ""}
-                              {formatCurrency(
-                                op.result ? Number(op.result) : null
-                              )}
-                            </span>
-                            <p
-                              className={`text-xs font-medium ${
-                                profit ? "text-green-500/90" : "text-red-500/90"
-                              }`}
-                            >
-                              {profit ? "+" : ""}
-                              {percentageResult.toLocaleString("pt-BR", {
-                                style: "percent",
-                                minimumFractionDigits: 2,
-                              })}
-                            </p>
-                          </div>
-                        )}
-                        {position.status === "Open" && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            title="Excluir Operação"
-                            className="h-8 w-8"
-                            onClick={() => openDeleteOperationConfirm(op)}
-                          >
-                            <Trash2 size={16} className="text-red-500" />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
+            <OperationsHistory
+              operations={operations}
+              isLoading={isLoading}
+              position={position}
+              onDeleteOperation={openDeleteOperationConfirm}
+            />
           )}
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-            <div>
-              <label className="text-xs sm:text-sm font-medium text-muted-foreground">
-                Tipo
-              </label>
-              <div className="mt-1">
-                <span
-                  className={cn(
-                    "px-2.5 py-0.5 text-sm font-semibold rounded-full",
-                    position.type === "Buy"
-                      ? "bg-blue-100 text-blue-800"
-                      : "bg-red-100 text-red-800"
-                  )}
-                >
-                  {position.type === "Buy" ? "Compra" : "Venda"}
-                </span>
-              </div>
-            </div>
-            <div>
-              <label className="text-xs sm:text-sm font-medium text-muted-foreground">
-                Data de Entrada
-              </label>
-              <p className="mt-1 text-sm sm:text-base font-medium">
-                {formatDate(position.initial_entry_date)}
-              </p>
-            </div>
-            <div>
-              <label className="text-xs sm:text-sm font-medium text-muted-foreground">
-                Preço Médio de Entrada
-              </label>
-              <p className="mt-1 text-sm sm:text-base font-medium">
-                {formatCurrency(position.average_entry_price)}
-              </p>
-            </div>
-            {position.status === "Closed" && (
-              <div>
-                <label className="text-xs sm:text-sm font-medium text-muted-foreground">
-                  Preço Médio de Saída
-                </label>
-                <p className="mt-1 text-sm sm:text-base font-medium">
-                  {closedPositionMetrics.average_exit_price > 0
-                    ? formatCurrency(closedPositionMetrics.average_exit_price)
-                    : "-"}
-                </p>
-              </div>
-            )}
-            {position.status === "Open" && (
-              <div>
-                <label className="text-xs sm:text-sm font-medium text-muted-foreground">
-                  Capital Alocado
-                </label>
-                <p className="mt-1 text-sm sm:text-base font-medium">
-                  {formatCurrency(
-                    position.current_quantity * position.average_entry_price
-                  )}
-                </p>
-              </div>
-            )}
-            <div>
-              <label className="text-xs sm:text-sm font-medium text-muted-foreground">
-                {position.status === "Closed"
-                  ? "Quantidade Total"
-                  : "Quantidade Atual"}
-              </label>
-              <p className="mt-1 text-sm sm:text-base font-medium">
-                {position.status === "Closed"
-                  ? closedPositionMetrics.total_quantity
-                  : position.current_quantity}
-              </p>
-            </div>
-            <div>
-              <label className="text-xs sm:text-sm font-medium text-muted-foreground">
-                Data de Saída
-              </label>
-              <p className="mt-1 text-sm sm:text-base font-medium">
-                {formatDate(position.last_exit_date)}
-              </p>
-            </div>
-          </div>
+          <PositionMetrics
+            position={position}
+            closedPositionMetrics={closedPositionMetrics}
+          />
 
-          {(position.setup || position.observations) && (
+          {(position.setup || position.observations || position.stop_gain || position.stop_loss) && (
             <div className="space-y-3 pt-4 mt-4 border-t">
               {position.setup && (
                 <div>
@@ -446,6 +284,62 @@ const PositionDetailsModal: React.FC<PositionDetailsModalProps> = ({
                   <p className="mt-1 text-sm sm:text-base whitespace-pre-wrap">
                     {position.observations}
                   </p>
+                </div>
+              )}
+              {(position.stop_gain || position.stop_loss) && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <span className="text-xs sm:text-sm font-medium text-muted-foreground">
+                      Stop Gain/Loss
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {position.stop_gain && (
+                      <div>
+                        <label className="text-xs sm:text-sm font-medium text-muted-foreground">
+                          Stop Gain
+                        </label>
+                        <p className="mt-1 text-sm sm:text-base font-medium text-green-600">
+                          {formatCurrency(position.stop_gain)}
+                        </p>
+                      </div>
+                    )}
+                    {position.stop_loss && (
+                      <div>
+                        <label className="text-xs sm:text-sm font-medium text-muted-foreground">
+                          Stop Loss
+                        </label>
+                        <p className="mt-1 text-sm sm:text-base font-medium text-red-600">
+                          {formatCurrency(position.stop_loss)}
+                        </p>
+                      </div>
+                    )}
+                    {position.stop_gain && position.stop_loss && (
+                      <div>
+                        <label className="text-xs sm:text-sm font-medium text-muted-foreground">
+                          Payoff (R:R)
+                        </label>
+                        <p className="mt-1 text-sm sm:text-base font-medium">
+                          {(() => {
+                            const entryPrice = position.average_entry_price;
+                            const stopGain = position.stop_gain;
+                            const stopLoss = position.stop_loss;
+
+                            if (!entryPrice || !stopGain || !stopLoss) return "-";
+
+                            const potentialGain = Math.abs(stopGain - entryPrice);
+                            const potentialLoss = Math.abs(entryPrice - stopLoss);
+
+                            if (potentialLoss === 0) return "-";
+
+                            const payoffRatio = potentialGain / potentialLoss;
+                            return `${payoffRatio.toFixed(2)} : 1`;
+                          })()}
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
@@ -501,7 +395,7 @@ const PositionDetailsModal: React.FC<PositionDetailsModalProps> = ({
           <PositionIncrementForm
             onSubmit={handleIncrementSubmit}
             onCancel={() => setIsIncrementModalOpen(false)}
-            currentQuantity={position.current_quantity}
+            currentQuantity={Number(position.current_quantity)}
           />
         </Modal>
       )}
@@ -515,7 +409,7 @@ const PositionDetailsModal: React.FC<PositionDetailsModalProps> = ({
           <PartialExitForm
             onSubmit={handlePartialExitSubmit}
             onCancel={() => setIsPartialExitModalOpen(false)}
-            remainingQuantity={position.current_quantity}
+            remainingQuantity={Number(position.current_quantity)}
           />
         </Modal>
       )}
@@ -537,13 +431,12 @@ const PositionDetailsModal: React.FC<PositionDetailsModalProps> = ({
           onClose={() => setOperationToDelete(null)}
           onConfirm={handleDeleteOperation}
           title="Confirmar Exclusão de Operação"
-          message={`Tem certeza que deseja excluir esta operação (${
-            operationToDelete.operation_type === "Increment"
+          message={`Tem certeza que deseja excluir esta operação (${operationToDelete.operation_type === "Increment"
               ? "Incremento"
               : "Venda Parcial"
-          } de ${operationToDelete.quantity} @ ${formatCurrency(
-            Number(operationToDelete.price)
-          )})? Esta ação irá recalcular toda a posição.`}
+            } de ${operationToDelete.quantity} @ ${formatCurrency(
+              Number(operationToDelete.price)
+            )})? Esta ação irá recalcular toda a posição.`}
           loading={isDeleting}
         />
       )}
