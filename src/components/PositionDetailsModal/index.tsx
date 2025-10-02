@@ -274,18 +274,19 @@ const PositionDetailsModal: React.FC<PositionDetailsModalProps> = ({
                 <span>{position.ticker}</span>
               </h3>
               <div className="flex items-center gap-2">
-                <div className="relative group">
-                  <Info
-                    size={18}
-                    className="text-muted-foreground hover:text-foreground transition-colors cursor-help flex-shrink-0"
-                  />
-                  <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-3 py-2 bg-popover text-popover-foreground text-xs rounded-md shadow-lg border opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50 max-w-md text-center">
-                    <div className="break-words">
-                      Resultado parcial - enquanto a posição não for realizada, não terá lucro/prejuízo efetivo
+                {position.status === "Open" && (
+                  <div className="relative group">
+                    <Info
+                      size={18}
+                      className="text-muted-foreground hover:text-foreground transition-colors cursor-help flex-shrink-0"
+                    />
+                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-3 py-2 bg-popover text-popover-foreground text-xs rounded-md shadow-lg border opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50 max-w-md text-center">
+                      <div className="break-words">
+                        Resultado parcial - enquanto a posição não for realizada, não terá lucro/prejuízo efetivo
+                      </div>
+                      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-b-4 border-transparent border-b-popover"></div>
                     </div>
-                    <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-b-4 border-transparent border-b-popover"></div>
-                  </div>
-                </div>
+                  </div>)}
                 {position.status === "Open" && (
                   (() => {
                     const current = inputPrice && Number.isFinite(parseFloat(inputPrice)) ? parseFloat(inputPrice) : (position.current_price || 0);
