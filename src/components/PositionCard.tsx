@@ -1,8 +1,10 @@
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { cn, formatCurrency, formatDate } from "@/lib/utils";
-import { TrendingDown, TrendingUp, Clock, CheckCircle } from "lucide-react";
+import { Clock, CheckCircle } from "lucide-react";
+import PnlChip from "@/components/ui/PnlChip";
 import { Position } from "../types/trade";
+import { getUnrealizedPnl } from "@/lib/pnl";
 
 interface PositionCardProps {
   position: Position;
@@ -58,7 +60,12 @@ const PositionCard: React.FC<PositionCardProps> = ({ position, onClick }) => {
 
   return (
     <Card
-      className="cursor-pointer hover:shadow-lg transition-shadow duration-200 active:scale-[0.98] flex flex-col"
+      className={cn(
+        "cursor-pointer transition-shadow duration-200 active:scale-[0.98] flex flex-col",
+        position.status === "Open"
+          ? "shadow-md hover:shadow-lg"
+          : "shadow-none hover:shadow-none"
+      )}
       onClick={() => onClick(position)}
     >
       <div className="flex-grow">
@@ -67,22 +74,19 @@ const PositionCard: React.FC<PositionCardProps> = ({ position, onClick }) => {
             <span className="text-base sm:text-lg font-bold truncate">
               {position.ticker}
             </span>
-            {position.status === "Closed" && (
-              <div
-                className={cn(
-                  "flex items-center gap-1 px-2 py-0.5 rounded-full text-sm font-semibold shrink-0",
-                  isProfit
-                    ? "bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400"
-                    : "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400"
-                )}
-              >
-                {isProfit ? (
-                  <TrendingUp size={14} />
-                ) : (
-                  <TrendingDown size={14} />
-                )}
-                <span>{formatCurrency(position.total_realized_pnl)}</span>
-              </div>
+            {position.status === "Closed" ? (
+              <PnlChip value={position.total_realized_pnl} type="realized" />
+            ) : (
+              (() => {
+                const unrealized = getUnrealizedPnl(position, position.current_price) || 0;
+                return (
+                  <PnlChip
+                    value={unrealized}
+                    type="unrealized"
+                    title={position.current_price ? `Preço atual: ${formatCurrency(position.current_price)}` : undefined}
+                  />
+                );
+              })()
             )}
           </CardTitle>
         </CardHeader>

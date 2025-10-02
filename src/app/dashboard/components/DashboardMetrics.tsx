@@ -3,6 +3,7 @@
 import React from 'react';
 import { Position } from '@/types/trade';
 import { formatCurrency, formatPercentage } from '@/lib/utils';
+import { getUnrealizedPnl } from '@/lib/pnl';
 import CumulativeProfitChart from '@/components/CumulativeProfitChart';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { PenSquare } from 'lucide-react';
@@ -56,6 +57,12 @@ const DashboardMetrics: React.FC<DashboardMetricsProps> = ({
         setIsEditingCapital(!isEditingCapital);
     };
 
+    const unrealizedOpen = positions
+        .filter(p => p.status === 'Open' && typeof p.current_price === 'number' && p.current_price! > 0)
+        .reduce((acc, p) => acc + getUnrealizedPnl(p, p.current_price), 0);
+
+    const totalProfitInclUnrealized = totalProfit + unrealizedOpen;
+
     const metricCards = [
         { title: 'Posições Encerradas', value: totalTrades },
         { title: 'Capital Alocado', value: formatCurrency(allocatedCapital) },
@@ -64,7 +71,7 @@ const DashboardMetrics: React.FC<DashboardMetricsProps> = ({
         { title: 'Payoff Ratio', value: payoffRatio.toFixed(2) },
     ];
     
-    const currentCapital = initialCapital + totalProfit;
+    const currentCapital = initialCapital + totalProfitInclUnrealized;
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 mb-6">
@@ -97,8 +104,11 @@ const DashboardMetrics: React.FC<DashboardMetricsProps> = ({
                             )}
                         </div>
                         <div className="space-y-1">
-                            <p className="text-sm text-muted-foreground">Capital Atual</p>
+                            <p className="text-sm text-muted-foreground">Capital Atual (Inclui Não Realizado)</p>
                             <p className="text-2xl font-bold">{formatCurrency(currentCapital)}</p>
+                            {unrealizedOpen !== 0 && (
+                                <p className="text-xs text-muted-foreground">Não realizado aberto: {formatCurrency(unrealizedOpen)}</p>
+                            )}
                         </div>
                     </CardContent>
                 </Card>

@@ -2,12 +2,11 @@ import React, { useState, useEffect } from "react";
 import {
   Edit,
   Trash2,
-  TrendingUp,
-  TrendingDown,
   CheckCircle,
   Clock,
   PlusCircle,
   CircleMinus,
+  Info,
 } from "lucide-react";
 import Modal from "../ui/Modal";
 import PositionForm, { PositionFormData } from "../PositionForm";
@@ -27,6 +26,11 @@ import PartialExitForm from "./PartialExitForm";
 import ConfirmationModal from "../ui/ConfirmationModal";
 import OperationsHistory from "./OperationsHistory";
 import PositionMetrics from "./PositionMetrics";
+import { Input } from "../ui/Input";
+import PnlChip from "../ui/PnlChip";
+import { useLivePrices } from "@/hooks/useLivePrices";
+import { useDebounce } from "@/hooks/useDebounce";
+import { getUnrealizedPnl } from "@/lib/pnl";
 
 interface PositionDetailsModalProps {
   position: Position;
@@ -50,6 +54,13 @@ const PositionDetailsModal: React.FC<PositionDetailsModalProps> = ({
     null
   );
 
+  const { getPrice, setPrice, syncFromBackend, persistToBackend } = useLivePrices();
+  const [inputPrice, setInputPrice] = useState<string>("");
+  const [tempPrice, setTempPrice] = useState<string>(""); // Valor temporário durante edição
+  const [originalPrice, setOriginalPrice] = useState<number>(0); // Preço original antes da edição
+  const debouncedPrice = useDebounce(inputPrice, 400);
+  const [isEditingPrice, setIsEditingPrice] = useState(false);
+
   const refreshPositionDetails = () => {
     setIsLoading(true);
     getOperationsByPositionId(position.id)
@@ -68,6 +79,26 @@ const PositionDetailsModal: React.FC<PositionDetailsModalProps> = ({
       refreshPositionDetails();
     }
   }, [position]);
+
+  // Hidratar preço atual do backend/localStorage ao abrir
+  useEffect(() => {
+    if (!position) return;
+    const existing = getPrice(position.id) ?? position.current_price;
+    if (existing && Number.isFinite(existing)) {
+      setInputPrice(String(existing));
+      setPrice(position.id, Number(existing));
+    }
+    // tenta sincronizar do backend
+    syncFromBackend(position.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [position?.id]);
+
+  useEffect(() => {
+    if (!position || !debouncedPrice || isEditingPrice) return;
+    const numeric = parseFloat(debouncedPrice);
+    if (!Number.isFinite(numeric) || numeric <= 0) return;
+    setPrice(position.id, numeric);
+  }, [debouncedPrice, position, setPrice, isEditingPrice]);
 
   const handleUpdate = async (data: PositionFormData) => {
     try {
@@ -137,7 +168,31 @@ const PositionDetailsModal: React.FC<PositionDetailsModalProps> = ({
     }
   };
 
-  const isProfit = position.total_realized_pnl >= 0;
+  const handleSavePrice = async () => {
+    const numericPrice = parseFloat(tempPrice);
+    if (!Number.isFinite(numericPrice) || numericPrice <= 0) return;
+
+    try {
+      setPrice(position.id, numericPrice);
+      await persistToBackend(position.id, numericPrice);
+      setInputPrice(tempPrice);
+      setIsEditingPrice(false);
+    } catch (error) {
+      console.error("Erro ao salvar preço:", error);
+    }
+  };
+
+  const handleCancelPriceEdit = () => {
+    setTempPrice(inputPrice);
+    setIsEditingPrice(false);
+  };
+
+  const handleStartPriceEdit = () => {
+    setOriginalPrice(parseFloat(inputPrice) || 0);
+    setTempPrice(inputPrice);
+    setIsEditingPrice(true);
+  };
+
   const isEditRestricted =
     position.status === "Closed" || operations.length > 1;
 
@@ -213,25 +268,103 @@ const PositionDetailsModal: React.FC<PositionDetailsModalProps> = ({
       <Modal isOpen={true} onClose={onClose} title="Detalhes da Posição">
         <div className="space-y-4 sm:space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <h3 className="text-xl sm:text-2xl font-bold">{position.ticker}</h3>
-            {position.status === "Closed" && (
-              <div
-                className={`flex items-center gap-2 px-3 py-1 rounded-full self-start sm:self-auto ${isProfit
-                    ? "bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400"
-                    : "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400"
-                  }`}
-              >
-                {isProfit ? (
-                  <TrendingUp size={16} />
-                ) : (
-                  <TrendingDown size={16} />
-                )}
-                <span className="font-semibold">
-                  {formatCurrency(position.total_realized_pnl)}
-                </span>
+            <h3 className="text-xl sm:text-2xl font-bold flex items-center gap-3">
+              <span>{position.ticker}</span>
+            </h3>
+            <div className="flex items-center gap-2">
+
+              <div className="relative group">
+                <Info
+                  size={18}
+                  className="text-muted-foreground hover:text-foreground transition-colors cursor-help flex-shrink-0"
+                />
+                <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-3 py-2 bg-popover text-popover-foreground text-xs rounded-md shadow-lg border opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50 max-w-md text-center">
+                  <div className="break-words">
+                    Resultado parcial - enquanto a posição não for realizada, não terá lucro/prejuízo efetivo
+                  </div>
+                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-b-4 border-transparent border-b-popover"></div>
+                </div>
               </div>
+              {position.status === "Open" && (
+                (() => {
+                  const current = inputPrice && Number.isFinite(parseFloat(inputPrice)) ? parseFloat(inputPrice) : (position.current_price || 0);
+                  const entry = Number(position.average_entry_price) || 0;
+                  const diffPct = entry > 0 && current > 0 ? ((current - entry) / entry) * 100 : 0;
+                  const unrealized = getUnrealizedPnl(position, current) || 0;
+                  return (
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className={cn("ml-1", diffPct >= 0 ? "text-green-600" : "text-red-600")}>
+                        {`${diffPct >= 0 ? '+' : ''}${diffPct.toFixed(2)}%`}
+                      </span>
+                      <PnlChip value={unrealized} title="PnL não realizado" className="ml-1" size="sm" type="unrealized" />
+
+                    </div>
+                  );
+                })()
+              )}
+            </div>
+
+            {position.status === "Closed" && (
+              <PnlChip value={position.total_realized_pnl} size="md" type="realized" />
             )}
           </div>
+          {position.status === "Open" && (
+            (() => {
+              const current = inputPrice && Number.isFinite(parseFloat(inputPrice)) ? parseFloat(inputPrice) : (position.current_price || 0);
+              return (
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="text-xs sm:text-sm text-muted-foreground">Último preço:</span>
+                  {isEditingPrice ? (
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        step="0.0001"
+                        min="0"
+                        value={tempPrice}
+                        onChange={(e) => setTempPrice(e.target.value)}
+                        className="h-8 w-28"
+                        autoFocus
+                        aria-label="Editar último preço"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleSavePrice}
+                        className="inline-flex items-center justify-center w-7 h-7 rounded hover:bg-green-100 dark:hover:bg-green-900/30 text-green-600 transition-colors"
+                        title="Salvar preço"
+                        aria-label="Salvar preço"
+                      >
+                        <CheckCircle size={16} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleCancelPriceEdit}
+                        className="inline-flex items-center justify-center w-7 h-7 rounded hover:bg-red-100 dark:hover:bg-red-900/30 text-red-600 transition-colors"
+                        title="Cancelar edição"
+                        aria-label="Cancelar edição"
+                      >
+                        <CircleMinus size={16} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold">
+                        {current > 0 ? `${Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(current)}` : '-'}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleStartPriceEdit}
+                        className="inline-flex items-center justify-center w-7 h-7 rounded hover:bg-muted/60 transition-colors"
+                        title="Editar último preço"
+                        aria-label="Editar último preço"
+                      >
+                        <Edit size={16} />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })()
+          )}
           <div className="pb-3 pt-2 border-t">
             <div
               className={cn(
@@ -264,7 +397,9 @@ const PositionDetailsModal: React.FC<PositionDetailsModalProps> = ({
           <PositionMetrics
             position={position}
             closedPositionMetrics={closedPositionMetrics}
+            currentPrice={(inputPrice && Number.isFinite(parseFloat(inputPrice)) ? parseFloat(inputPrice) : undefined)}
           />
+
 
           {(position.setup || position.observations || position.stop_gain || position.stop_loss) && (
             <div className="space-y-3 pt-4 mt-4 border-t">
@@ -432,8 +567,8 @@ const PositionDetailsModal: React.FC<PositionDetailsModalProps> = ({
           onConfirm={handleDeleteOperation}
           title="Confirmar Exclusão de Operação"
           message={`Tem certeza que deseja excluir esta operação (${operationToDelete.operation_type === "Increment"
-              ? "Incremento"
-              : "Venda Parcial"
+            ? "Incremento"
+            : "Venda Parcial"
             } de ${operationToDelete.quantity} @ ${formatCurrency(
               Number(operationToDelete.price)
             )})? Esta ação irá recalcular toda a posição.`}

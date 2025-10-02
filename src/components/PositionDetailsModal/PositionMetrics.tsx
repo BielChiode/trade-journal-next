@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { Position } from "../../types/trade";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { cn } from "@/lib/utils";
+import { getUnrealizedPnl, getUnrealizedPnlPct } from "@/lib/pnl";
 
 interface PositionMetricsProps {
   position: Position;
@@ -9,12 +10,18 @@ interface PositionMetricsProps {
     total_quantity: number;
     average_exit_price: number;
   };
+  currentPrice?: number;
 }
 
 const PositionMetrics: React.FC<PositionMetricsProps> = ({
   position,
   closedPositionMetrics,
+  currentPrice,
 }) => {
+  const effectiveCurrent = typeof currentPrice === 'number' ? currentPrice : position.current_price;
+  const unrealized = useMemo(() => getUnrealizedPnl(position, effectiveCurrent), [position, effectiveCurrent]);
+  const unrealizedPct = useMemo(() => getUnrealizedPnlPct(position, effectiveCurrent), [position, effectiveCurrent]);
+  const totalWithUnrealized = useMemo(() => Number(position.total_realized_pnl) + (unrealized || 0), [position.total_realized_pnl, unrealized]);
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
       <div>
