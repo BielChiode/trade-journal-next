@@ -266,143 +266,215 @@ const PositionDetailsModal: React.FC<PositionDetailsModalProps> = ({
   return (
     <>
       <Modal isOpen={true} onClose={onClose} title="Detalhes da Posição">
-        <div className="space-y-4 sm:space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <h3 className="text-xl sm:text-2xl font-bold flex items-center gap-3">
-              <span>{position.ticker}</span>
-            </h3>
-            <div className="flex items-center gap-2">
-
-              <div className="relative group">
-                <Info
-                  size={18}
-                  className="text-muted-foreground hover:text-foreground transition-colors cursor-help flex-shrink-0"
-                />
-                <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-3 py-2 bg-popover text-popover-foreground text-xs rounded-md shadow-lg border opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50 max-w-md text-center">
-                  <div className="break-words">
-                    Resultado parcial - enquanto a posição não for realizada, não terá lucro/prejuízo efetivo
-                  </div>
-                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-b-4 border-transparent border-b-popover"></div>
-                </div>
-              </div>
-              {position.status === "Open" && (
-                (() => {
-                  const current = inputPrice && Number.isFinite(parseFloat(inputPrice)) ? parseFloat(inputPrice) : (position.current_price || 0);
-                  const entry = Number(position.average_entry_price) || 0;
-                  const diffPct = entry > 0 && current > 0 ? ((current - entry) / entry) * 100 : 0;
-                  const unrealized = getUnrealizedPnl(position, current) || 0;
-                  return (
-                    <div className="flex items-center gap-2 text-sm">
-                      <span className={cn("ml-1", diffPct >= 0 ? "text-green-600" : "text-red-600")}>
-                        {`${diffPct >= 0 ? '+' : ''}${diffPct.toFixed(2)}%`}
-                      </span>
-                      <PnlChip value={unrealized} title="PnL não realizado" className="ml-1" size="sm" type="unrealized" />
-
+        <div className="space-y-5">
+          {/* 1. CABEÇALHO E RESUMO PRINCIPAL */}
+          <div className="space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <h3 className="text-2xl sm:text-3xl font-bold flex items-center gap-3">
+                <span>{position.ticker}</span>
+              </h3>
+              <div className="flex items-center gap-2">
+                <div className="relative group">
+                  <Info
+                    size={18}
+                    className="text-muted-foreground hover:text-foreground transition-colors cursor-help flex-shrink-0"
+                  />
+                  <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-3 py-2 bg-popover text-popover-foreground text-xs rounded-md shadow-lg border opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50 max-w-md text-center">
+                    <div className="break-words">
+                      Resultado parcial - enquanto a posição não for realizada, não terá lucro/prejuízo efetivo
                     </div>
-                  );
-                })()
-              )}
+                    <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-b-4 border-transparent border-b-popover"></div>
+                  </div>
+                </div>
+                {position.status === "Open" && (
+                  (() => {
+                    const current = inputPrice && Number.isFinite(parseFloat(inputPrice)) ? parseFloat(inputPrice) : (position.current_price || 0);
+                    const entry = Number(position.average_entry_price) || 0;
+                    const diffPct = entry > 0 && current > 0 ? ((current - entry) / entry) * 100 : 0;
+                    const unrealized = getUnrealizedPnl(position, current) || 0;
+                    return (
+                      <div className="flex items-center gap-2 text-sm">
+                        <span className={cn("ml-1 font-bold text-base", diffPct >= 0 ? "text-green-600 dark:text-green-500" : "text-red-600 dark:text-red-500")}>
+                          {`${diffPct >= 0 ? '+' : ''}${diffPct.toFixed(2)}%`}
+                        </span>
+                        <PnlChip value={unrealized} title="PnL não realizado" className="ml-1" size="sm" type="unrealized" />
+                      </div>
+                    );
+                  })()
+                )}
+                {position.status === "Closed" && (
+                  <PnlChip value={position.total_realized_pnl} size="md" type="realized" />
+                )}
+              </div>
             </div>
 
-            {position.status === "Closed" && (
-              <PnlChip value={position.total_realized_pnl} size="md" type="realized" />
+            {/* Status da Posição */}
+            <div className="flex items-center gap-2 text-sm">
+              <div
+                className={cn(
+                  "flex items-center gap-2",
+                  position.status === "Open"
+                    ? "text-blue-600 dark:text-blue-400"
+                    : "text-gray-500 dark:text-gray-400"
+                )}
+              >
+                {position.status === "Open" ? (
+                  <Clock size={14} />
+                ) : (
+                  <CheckCircle size={14} />
+                )}
+                <span className="font-medium">
+                  Posição {position.status === "Open" ? "Aberta" : "Fechada"}
+                </span>
+              </div>
+            </div>
+
+            {/* Preço Atual */}
+            {position.status === "Open" && (
+              (() => {
+                const current = inputPrice && Number.isFinite(parseFloat(inputPrice)) ? parseFloat(inputPrice) : (position.current_price || 0);
+                return (
+                  <div className="flex items-center gap-2 text-sm bg-muted/30 p-3 rounded-lg">
+                    <span className="text-sm font-medium text-muted-foreground">Preço Atual:</span>
+                    {isEditingPrice ? (
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="number"
+                          step="0.0001"
+                          min="0"
+                          value={tempPrice}
+                          onChange={(e) => setTempPrice(e.target.value)}
+                          className="h-8 w-32"
+                          autoFocus
+                          aria-label="Editar preço atual"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleSavePrice}
+                          className="inline-flex items-center justify-center w-7 h-7 rounded hover:bg-green-100 dark:hover:bg-green-900/30 text-green-600 transition-colors"
+                          title="Salvar preço"
+                          aria-label="Salvar preço"
+                        >
+                          <CheckCircle size={16} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleCancelPriceEdit}
+                          className="inline-flex items-center justify-center w-7 h-7 rounded hover:bg-red-100 dark:hover:bg-red-900/30 text-red-600 transition-colors"
+                          title="Cancelar edição"
+                          aria-label="Cancelar edição"
+                        >
+                          <CircleMinus size={16} />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-base">
+                          {current > 0 ? `${Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(current)}` : '-'}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={handleStartPriceEdit}
+                          className="inline-flex items-center justify-center w-7 h-7 rounded hover:bg-muted/60 transition-colors"
+                          title="Editar preço atual"
+                          aria-label="Editar preço atual"
+                        >
+                          <Edit size={14} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()
             )}
           </div>
-          {position.status === "Open" && (
-            (() => {
-              const current = inputPrice && Number.isFinite(parseFloat(inputPrice)) ? parseFloat(inputPrice) : (position.current_price || 0);
-              return (
-                <div className="flex items-center gap-2 text-sm">
-                  <span className="text-xs sm:text-sm text-muted-foreground">Último preço:</span>
-                  {isEditingPrice ? (
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="number"
-                        step="0.0001"
-                        min="0"
-                        value={tempPrice}
-                        onChange={(e) => setTempPrice(e.target.value)}
-                        className="h-8 w-28"
-                        autoFocus
-                        aria-label="Editar último preço"
-                      />
-                      <button
-                        type="button"
-                        onClick={handleSavePrice}
-                        className="inline-flex items-center justify-center w-7 h-7 rounded hover:bg-green-100 dark:hover:bg-green-900/30 text-green-600 transition-colors"
-                        title="Salvar preço"
-                        aria-label="Salvar preço"
-                      >
-                        <CheckCircle size={16} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleCancelPriceEdit}
-                        className="inline-flex items-center justify-center w-7 h-7 rounded hover:bg-red-100 dark:hover:bg-red-900/30 text-red-600 transition-colors"
-                        title="Cancelar edição"
-                        aria-label="Cancelar edição"
-                      >
-                        <CircleMinus size={16} />
-                      </button>
+
+          {/* 2. DETALHES DA ENTRADA */}
+          <div className="pt-4 border-t">
+            <h4 className="text-sm font-semibold text-muted-foreground mb-3 uppercase tracking-wide">Detalhes da Entrada</h4>
+            <PositionMetrics
+              position={position}
+              closedPositionMetrics={closedPositionMetrics}
+              currentPrice={(inputPrice && Number.isFinite(parseFloat(inputPrice)) ? parseFloat(inputPrice) : undefined)}
+            />
+          </div>
+
+          {/* 3. PARÂMETROS DE SAÍDA (STOPS) */}
+          {(position.stop_gain || position.stop_loss) && (
+            <div className="pt-4 border-t">
+              <h4 className="text-sm font-semibold text-muted-foreground mb-3 uppercase tracking-wide">Parâmetros de Saída</h4>
+              <div className="bg-muted/30 p-4 rounded-lg border border-border/50 space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {position.stop_gain && (
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-muted-foreground">
+                        Stop Gain
+                      </label>
+                      <p className="text-lg font-bold text-green-600 dark:text-green-500">
+                        {formatCurrency(position.stop_gain)}
+                      </p>
+                      {position.status === "Open" && (
+                        <p className="text-xs text-muted-foreground">
+                          Lucro Potencial: <span className="font-semibold text-green-600 dark:text-green-500">
+                            {formatCurrency(
+                              Math.abs(position.stop_gain - position.average_entry_price) * Number(position.current_quantity)
+                            )}
+                          </span>
+                        </p>
+                      )}
                     </div>
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold">
-                        {current > 0 ? `${Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(current)}` : '-'}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={handleStartPriceEdit}
-                        className="inline-flex items-center justify-center w-7 h-7 rounded hover:bg-muted/60 transition-colors"
-                        title="Editar último preço"
-                        aria-label="Editar último preço"
-                      >
-                        <Edit size={16} />
-                      </button>
+                  )}
+                  {position.stop_loss && (
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-muted-foreground">
+                        Stop Loss
+                      </label>
+                      <p className="text-lg font-bold text-red-600 dark:text-red-500">
+                        {formatCurrency(position.stop_loss)}
+                      </p>
+                      {position.status === "Open" && (
+                        <p className="text-xs text-muted-foreground">
+                          Perda Potencial: <span className="font-semibold text-red-600 dark:text-red-500">
+                            {formatCurrency(
+                              Math.abs(position.average_entry_price - position.stop_loss) * Number(position.current_quantity)
+                            )}
+                          </span>
+                        </p>
+                      )}
                     </div>
                   )}
                 </div>
-              );
-            })()
-          )}
-          <div className="pb-3 pt-2 border-t">
-            <div
-              className={cn(
-                "flex items-center gap-2 text-sm",
-                position.status === "Open"
-                  ? "text-blue-600 dark:text-blue-400"
-                  : "text-gray-400 dark:text-gray-400"
-              )}
-            >
-              {position.status === "Open" ? (
-                <Clock size={12} />
-              ) : (
-                <CheckCircle size={12} />
-              )}
-              <span>
-                Posição {position.status === "Open" ? "Aberta" : "Fechada"}
-              </span>
+                {position.stop_gain && position.stop_loss && (
+                  <div className="pt-3 border-t border-border/30">
+                    <label className="text-xs font-medium text-muted-foreground">
+                      Risco:Retorno (R:R)
+                    </label>
+                    <p className="mt-1 text-base font-bold">
+                      {(() => {
+                        const entryPrice = position.average_entry_price;
+                        const stopGain = position.stop_gain;
+                        const stopLoss = position.stop_loss;
+
+                        if (!entryPrice || !stopGain || !stopLoss) return "-";
+
+                        const potentialGain = Math.abs(stopGain - entryPrice);
+                        const potentialLoss = Math.abs(entryPrice - stopLoss);
+
+                        if (potentialLoss === 0) return "-";
+
+                        const payoffRatio = potentialGain / potentialLoss;
+                        return `${payoffRatio.toFixed(2)} : 1`;
+                      })()}
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-
-          {operations.length > 1 && (
-            <OperationsHistory
-              operations={operations}
-              isLoading={isLoading}
-              position={position}
-              onDeleteOperation={openDeleteOperationConfirm}
-            />
           )}
 
-          <PositionMetrics
-            position={position}
-            closedPositionMetrics={closedPositionMetrics}
-            currentPrice={(inputPrice && Number.isFinite(parseFloat(inputPrice)) ? parseFloat(inputPrice) : undefined)}
-          />
-
-
-          {(position.setup || position.observations || position.stop_gain || position.stop_loss) && (
-            <div className="space-y-3 pt-4 mt-4 border-t">
+          {/* Setup e Observações */}
+          {(position.setup || position.observations) && (
+            <div className="pt-4 border-t space-y-3">
               {position.setup && (
                 <div>
                   <label className="text-xs sm:text-sm font-medium text-muted-foreground">
@@ -421,103 +493,73 @@ const PositionDetailsModal: React.FC<PositionDetailsModalProps> = ({
                   </p>
                 </div>
               )}
-              {(position.stop_gain || position.stop_loss) && (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                    <span className="text-xs sm:text-sm font-medium text-muted-foreground">
-                      Stop Gain/Loss
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    {position.stop_gain && (
-                      <div>
-                        <label className="text-xs sm:text-sm font-medium text-muted-foreground">
-                          Stop Gain
-                        </label>
-                        <p className="mt-1 text-sm sm:text-base font-medium text-green-600">
-                          {formatCurrency(position.stop_gain)}
-                        </p>
-                      </div>
-                    )}
-                    {position.stop_loss && (
-                      <div>
-                        <label className="text-xs sm:text-sm font-medium text-muted-foreground">
-                          Stop Loss
-                        </label>
-                        <p className="mt-1 text-sm sm:text-base font-medium text-red-600">
-                          {formatCurrency(position.stop_loss)}
-                        </p>
-                      </div>
-                    )}
-                    {position.stop_gain && position.stop_loss && (
-                      <div>
-                        <label className="text-xs sm:text-sm font-medium text-muted-foreground">
-                          Payoff (R:R)
-                        </label>
-                        <p className="mt-1 text-sm sm:text-base font-medium">
-                          {(() => {
-                            const entryPrice = position.average_entry_price;
-                            const stopGain = position.stop_gain;
-                            const stopLoss = position.stop_loss;
+            </div>
+          )}
 
-                            if (!entryPrice || !stopGain || !stopLoss) return "-";
-
-                            const potentialGain = Math.abs(stopGain - entryPrice);
-                            const potentialLoss = Math.abs(entryPrice - stopLoss);
-
-                            if (potentialLoss === 0) return "-";
-
-                            const payoffRatio = potentialGain / potentialLoss;
-                            return `${payoffRatio.toFixed(2)} : 1`;
-                          })()}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
+          {/* 4. HISTÓRICO DA POSIÇÃO */}
+          {operations.length > 1 && (
+            <div className="pt-4 border-t">
+              <h4 className="text-sm font-semibold text-muted-foreground mb-3 uppercase tracking-wide">Histórico da Posição</h4>
+              <div className="bg-muted/20 p-3 rounded-lg border border-border/30">
+                <OperationsHistory
+                  operations={operations}
+                  isLoading={isLoading}
+                  position={position}
+                  onDeleteOperation={openDeleteOperationConfirm}
+                />
+              </div>
             </div>
           )}
         </div>
 
-        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-6 pt-4 border-t">
+        {/* 5. AÇÕES (CTAs) */}
+        <div className="flex flex-col gap-3 mt-6 pt-4 border-t">
           {position.status === "Open" && (
-            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <>
               <Button
-                variant="outline"
+                variant="default"
                 onClick={() => setIsPartialExitModalOpen(true)}
-                className="w-full"
+                className="w-full bg-green-600 hover:bg-green-700 text-white"
               >
-                <CircleMinus className="mr-2 h-4 w-4" /> Registrar Saída
+                <CircleMinus className="mr-2 h-4 w-4" /> Encerrar Posição
               </Button>
-              <Button
-                variant="outline"
-                onClick={() => setIsIncrementModalOpen(true)}
-                className="w-full"
-              >
-                <PlusCircle className="mr-2 h-4 w-4" /> Incrementar Posição
-              </Button>
-            </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => setIsIncrementModalOpen(true)}
+                  className="w-full"
+                >
+                  <PlusCircle className="mr-2 h-4 w-4" /> Incrementar Posição
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setIsEditing(true)}
+                  className="w-full"
+                  title="Editar Stops/Posição"
+                >
+                  <Edit className="mr-2 h-4 w-4" /> Editar Posição
+                </Button>
+              </div>
+            </>
           )}
-          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+          {position.status === "Closed" && (
             <Button
-              variant="default"
+              variant="outline"
               onClick={() => setIsEditing(true)}
-              className="w-full sm:w-auto"
+              className="w-full"
               title="Editar Posição"
             >
-              <Edit size={16} />
+              <Edit className="mr-2 h-4 w-4" /> Editar Posição
             </Button>
-            <Button
-              variant="destructive"
-              onClick={() => setIsDeleteConfirmOpen(true)}
-              className="w-full sm:w-auto"
-              title="Excluir Posição"
-            >
-              <Trash2 size={16} />
-            </Button>
-          </div>
+          )}
+          <Button
+            variant="ghost"
+            onClick={() => setIsDeleteConfirmOpen(true)}
+            className="w-full text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20"
+            title="Excluir Posição"
+          >
+            <Trash2 className="mr-2 h-4 w-4" /> Excluir Posição
+          </Button>
         </div>
       </Modal>
 
@@ -539,7 +581,7 @@ const PositionDetailsModal: React.FC<PositionDetailsModalProps> = ({
         <Modal
           isOpen={isPartialExitModalOpen}
           onClose={() => setIsPartialExitModalOpen(false)}
-          title="Registrar Saída"
+          title="Encerrar Posição"
         >
           <PartialExitForm
             onSubmit={handlePartialExitSubmit}
