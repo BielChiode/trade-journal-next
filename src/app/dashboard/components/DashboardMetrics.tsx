@@ -79,14 +79,21 @@ const DashboardMetrics: React.FC<DashboardMetricsProps> = ({
             <div className="lg:col-span-3 space-y-4">
                 <Card>
                     <CardHeader>
-                        <CardTitle>Capital</CardTitle>
+                        <CardTitle>Balanço Total Atual</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        <div className="space-y-1">
+                        <div className="space-y-2">
+                            <p className="text-xs text-muted-foreground uppercase tracking-wide">Balanço Total</p>
+                            <p className="text-3xl font-bold">{formatCurrency(currentCapital)}</p>
+                            {unrealizedOpen !== 0 && (
+                                <p className="text-xs text-muted-foreground">Não realizado aberto: <span className={unrealizedOpen >= 0 ? "text-green-600 dark:text-green-500 font-medium" : "text-red-600 dark:text-red-500 font-medium"}>{formatCurrency(unrealizedOpen)}</span></p>
+                            )}
+                        </div>
+                        <div className="pt-3 border-t space-y-1">
                             <div className="flex items-center justify-between">
-                                <p className="text-sm text-muted-foreground">Capital Inicial</p>
-                                <Button onClick={handleCapitalEdit} size="sm" variant="ghost">
-                                    {isEditingCapital ? 'Salvar' : <PenSquare className="h-4 w-4" />}
+                                <p className="text-xs text-muted-foreground">Capital Inicial</p>
+                                <Button onClick={handleCapitalEdit} size="sm" variant="ghost" className="h-7">
+                                    {isEditingCapital ? 'Salvar' : <PenSquare className="h-3.5 w-3.5" />}
                                 </Button>
                             </div>
                             {isEditingCapital ? (
@@ -100,14 +107,7 @@ const DashboardMetrics: React.FC<DashboardMetricsProps> = ({
                                     />
                                 </div>
                             ) : (
-                                <p className="text-2xl font-bold">{formatCurrency(initialCapital)}</p>
-                            )}
-                        </div>
-                        <div className="space-y-1">
-                            <p className="text-sm text-muted-foreground">Capital Atual (Inclui Não Realizado)</p>
-                            <p className="text-2xl font-bold">{formatCurrency(currentCapital)}</p>
-                            {unrealizedOpen !== 0 && (
-                                <p className="text-xs text-muted-foreground">Não realizado aberto: {formatCurrency(unrealizedOpen)}</p>
+                                <p className="text-base font-medium text-muted-foreground">{formatCurrency(initialCapital)}</p>
                             )}
                         </div>
                     </CardContent>
