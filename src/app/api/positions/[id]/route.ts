@@ -42,7 +42,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
     const params = await context.params;
     const positionId = parseInt(params.id, 10);
     const body = await request.json();
-    const { setup, observations, stop_gain, stop_loss } = body;
+    const { setup, observations, stop_gain, stop_loss, ticker } = body;
 
     const updatedPosition = await prisma.position.update({
       where: {
@@ -54,6 +54,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
         observations,
         stop_gain: stop_gain ? parseFloat(stop_gain) : null,
         stop_loss: stop_loss ? parseFloat(stop_loss) : null,
+        ...(ticker ? { ticker } : {}),
       },
     });
 
