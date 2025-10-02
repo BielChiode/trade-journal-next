@@ -63,14 +63,6 @@ const DashboardMetrics: React.FC<DashboardMetricsProps> = ({
 
     const totalProfitInclUnrealized = totalProfit + unrealizedOpen;
 
-    const metricCards = [
-        { title: 'Posições Encerradas', value: totalTrades },
-        { title: 'Capital Alocado', value: formatCurrency(allocatedCapital) },
-        { title: 'Taxa de Acerto', value: formatPercentage(winRate) },
-        { title: 'Lucro Médio', value: formatCurrency(averageProfit) },
-        { title: 'Payoff Ratio', value: payoffRatio.toFixed(2) },
-    ];
-    
     const currentCapital = initialCapital + totalProfitInclUnrealized;
 
     return (
@@ -114,22 +106,54 @@ const DashboardMetrics: React.FC<DashboardMetricsProps> = ({
                 </Card>
                 <Card>
                     <CardHeader>
-                        <CardTitle>Métricas</CardTitle>
+                        <CardTitle>Métricas de Performance</CardTitle>
                     </CardHeader>
-                    <CardContent className="grid grid-cols-2 gap-4 text-center">
-                        {metricCards.map(metric => (
-                            <div key={metric.title}>
-                                <p className="text-xl font-bold">{metric.value}</p>
-                                <p className="text-sm text-muted-foreground">{metric.title}</p>
+                    <CardContent className="space-y-4">
+                        {/* Grid de métricas - 2 colunas */}
+                        <div className="grid grid-cols-2 gap-4">
+                            {/* Trades Encerrados */}
+                            <div className="text-center">
+                                <p className="text-2xl font-bold">{totalTrades}</p>
+                                <p className="text-xs text-muted-foreground mt-1">Trades Encerrados</p>
                             </div>
-                        ))}
+
+                            {/* Lucro Total */}
+                            <div className="text-center">
+                                <p className={`text-xl font-bold ${totalProfit >= 0 ? 'text-green-600 dark:text-green-500' : 'text-red-600 dark:text-red-500'}`}>
+                                    {formatCurrency(totalProfit)}
+                                </p>
+                                <p className="text-xs text-muted-foreground mt-1">Lucro Total</p>
+                            </div>
+
+                            {/* Lucro Médio */}
+                            <div className="text-center">
+                                <p className={`text-lg font-bold ${averageProfit >= 0 ? 'text-green-600 dark:text-green-500' : 'text-red-600 dark:text-red-500'}`}>
+                                    {formatCurrency(averageProfit)}
+                                </p>
+                                <p className="text-xs text-muted-foreground mt-1">Lucro Médio</p>
+                            </div>
+
+                            {/* Taxa de Acerto */}
+                            <div className="text-center">
+                                <p className="text-lg font-bold">{formatPercentage(winRate)}</p>
+                                <p className="text-xs text-muted-foreground mt-1">Taxa de Acerto</p>
+                            </div>
+                        </div>
+
+                        {/* Payoff Ratio em destaque */}
+                        <div className="text-center pt-3 border-t">
+                            <p className="text-lg font-bold">{payoffRatio.toFixed(2)}</p>
+                            <p className="text-xs text-muted-foreground mt-1">Payoff Ratio</p>
+                        </div>
                     </CardContent>
                 </Card>
             </div>
 
             {/* Coluna do Gráfico (9/12) */}
             <div className="lg:col-span-9">
-                <CumulativeProfitChart positions={positions} />
+                <div className="h-[575px]">
+                    <CumulativeProfitChart positions={positions} />
+                </div>
             </div>
         </div>
     );
