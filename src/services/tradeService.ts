@@ -44,7 +44,7 @@ export const addPosition = (positionData: CreatePositionData) =>
 
 export const updatePosition = (
   positionId: number,
-  data: { setup?: string; observations?: string; stop_gain?: number; stop_loss?: number }
+  data: { ticker?: string; setup?: string; observations?: string; stop_gain?: number; stop_loss?: number }
 ) => apiClient.put(`/positions/${positionId}`, data);
 
 export const getOperationsByPositionId = async (
