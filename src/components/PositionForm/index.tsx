@@ -410,6 +410,7 @@ const PositionForm: React.FC<PositionFormProps> = ({
         stopLoss={formData.stop_loss}
         onFieldChange={handleChange}
         isEditRestricted={isEditRestricted}
+        allowStopsEdit={isEditing}
       />
 
       <ExitSection

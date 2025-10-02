@@ -8,6 +8,7 @@ interface BracketOrderSectionProps {
   stopLoss: number | undefined;
   onFieldChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   isEditRestricted?: boolean;
+  allowStopsEdit?: boolean;
 }
 
 const BracketOrderSection: React.FC<BracketOrderSectionProps> = ({
@@ -17,7 +18,9 @@ const BracketOrderSection: React.FC<BracketOrderSectionProps> = ({
   stopLoss,
   onFieldChange,
   isEditRestricted = false,
+  allowStopsEdit = false,
 }) => {
+  const stopsDisabled = isEditRestricted && !allowStopsEdit;
   return (
     <>
       <div className="flex items-center space-x-2">
@@ -26,7 +29,7 @@ const BracketOrderSection: React.FC<BracketOrderSectionProps> = ({
           id="bracketOrder"
           checked={isBracketOrder}
           onChange={onBracketOrderChange}
-          disabled={isEditRestricted}
+          disabled={stopsDisabled}
           className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary focus:ring-offset-0"
         />
         <label htmlFor="bracketOrder" className="text-sm font-medium text-muted-foreground">
@@ -49,7 +52,7 @@ const BracketOrderSection: React.FC<BracketOrderSectionProps> = ({
               placeholder="0.00"
               className="text-base sm:text-sm"
               required={isBracketOrder}
-              disabled={isEditRestricted}
+              disabled={stopsDisabled}
             />
           </div>
           <div>
@@ -65,7 +68,7 @@ const BracketOrderSection: React.FC<BracketOrderSectionProps> = ({
               placeholder="0.00"
               className="text-base sm:text-sm"
               required={isBracketOrder}
-              disabled={isEditRestricted}
+              disabled={stopsDisabled}
             />
           </div>
         </div>
