@@ -32,6 +32,7 @@ export interface Position {
   stop_gain?: number;
   stop_loss?: number;
   operations: Operation[];
+  current_price?: number;
 }
 
 export interface Operation {

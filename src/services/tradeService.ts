@@ -10,6 +10,7 @@ const transformPositionData = (position: any): Position => ({
     ? new Date(position.last_exit_date)
     : undefined,
   operations: position.operations.map(transformOperationData),
+  current_price: position.last_price ? parseFloat(position.last_price) : undefined,
 });
 
 const transformOperationData = (operation: any): Operation => ({
@@ -92,6 +93,26 @@ export const searchTickers = async (
     console.error("Erro ao buscar tickers:", error);
     return [];
   }
+};
+
+export const getPositionLastPrice = async (
+  positionId: number
+): Promise<number | undefined> => {
+  const { data } = await apiClient.get<{ positionId: number; last_price: string | number | null }>(
+    `/positions/${positionId}/price`
+  );
+  return data.last_price != null ? parseFloat(String(data.last_price)) : undefined;
+};
+
+export const setPositionLastPrice = async (
+  positionId: number,
+  price: number
+): Promise<number> => {
+  const { data } = await apiClient.put<{ positionId: number; last_price: string | number }>(
+    `/positions/${positionId}/price`,
+    { price }
+  );
+  return parseFloat(String(data.last_price));
 };
 
 export async function deleteOperation(
