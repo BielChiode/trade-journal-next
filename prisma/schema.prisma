@@ -34,6 +34,7 @@ model Position {
   observations        String?
   stop_gain           Decimal?
   stop_loss           Decimal?
+  last_price          Decimal?
   operations          Operation[]
   user                User           @relation(fields: [userId], references: [id], onDelete: Cascade)
 
