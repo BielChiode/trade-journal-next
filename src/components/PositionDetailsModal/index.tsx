@@ -177,6 +177,7 @@ const PositionDetailsModal: React.FC<PositionDetailsModalProps> = ({
       await persistToBackend(position.id, numericPrice);
       setInputPrice(tempPrice);
       setIsEditingPrice(false);
+      onUpdate();
     } catch (error) {
       console.error("Erro ao salvar preço:", error);
     }
