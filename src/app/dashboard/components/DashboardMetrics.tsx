@@ -3,6 +3,7 @@
 import React from 'react';
 import { Position } from '@/types/trade';
 import { formatCurrency, formatPercentage } from '@/lib/utils';
+import { getUnrealizedPnl } from '@/lib/pnl';
 import CumulativeProfitChart from '@/components/CumulativeProfitChart';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { PenSquare } from 'lucide-react';
@@ -56,15 +57,13 @@ const DashboardMetrics: React.FC<DashboardMetricsProps> = ({
         setIsEditingCapital(!isEditingCapital);
     };
 
-    const metricCards = [
-        { title: 'Posições Encerradas', value: totalTrades },
-        { title: 'Capital Alocado', value: formatCurrency(allocatedCapital) },
-        { title: 'Taxa de Acerto', value: formatPercentage(winRate) },
-        { title: 'Lucro Médio', value: formatCurrency(averageProfit) },
-        { title: 'Payoff Ratio', value: payoffRatio.toFixed(2) },
-    ];
-    
-    const currentCapital = initialCapital + totalProfit;
+    const unrealizedOpen = positions
+        .filter(p => p.status === 'Open' && typeof p.current_price === 'number' && p.current_price! > 0)
+        .reduce((acc, p) => acc + getUnrealizedPnl(p, p.current_price), 0);
+
+    const totalProfitInclUnrealized = totalProfit + unrealizedOpen;
+
+    const currentCapital = initialCapital + totalProfitInclUnrealized;
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 mb-6">
@@ -72,14 +71,21 @@ const DashboardMetrics: React.FC<DashboardMetricsProps> = ({
             <div className="lg:col-span-3 space-y-4">
                 <Card>
                     <CardHeader>
-                        <CardTitle>Capital</CardTitle>
+                        <CardTitle>Balanço Total Atual</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        <div className="space-y-1">
+                        <div className="space-y-2">
+                            <p className="text-xs text-muted-foreground uppercase tracking-wide">Balanço Total</p>
+                            <p className="text-3xl font-bold">{formatCurrency(currentCapital)}</p>
+                            {unrealizedOpen !== 0 && (
+                                <p className="text-xs text-muted-foreground">Não realizado aberto: <span className={unrealizedOpen >= 0 ? "text-green-600 dark:text-green-500 font-medium" : "text-red-600 dark:text-red-500 font-medium"}>{formatCurrency(unrealizedOpen)}</span></p>
+                            )}
+                        </div>
+                        <div className="pt-3 border-t space-y-1">
                             <div className="flex items-center justify-between">
-                                <p className="text-sm text-muted-foreground">Capital Inicial</p>
-                                <Button onClick={handleCapitalEdit} size="sm" variant="ghost">
-                                    {isEditingCapital ? 'Salvar' : <PenSquare className="h-4 w-4" />}
+                                <p className="text-xs text-muted-foreground">Capital Inicial</p>
+                                <Button onClick={handleCapitalEdit} size="sm" variant="ghost" className="h-7">
+                                    {isEditingCapital ? 'Salvar' : <PenSquare className="h-3.5 w-3.5" />}
                                 </Button>
                             </div>
                             {isEditingCapital ? (
@@ -93,33 +99,61 @@ const DashboardMetrics: React.FC<DashboardMetricsProps> = ({
                                     />
                                 </div>
                             ) : (
-                                <p className="text-2xl font-bold">{formatCurrency(initialCapital)}</p>
+                                <p className="text-base font-medium text-muted-foreground">{formatCurrency(initialCapital)}</p>
                             )}
-                        </div>
-                        <div className="space-y-1">
-                            <p className="text-sm text-muted-foreground">Capital Atual</p>
-                            <p className="text-2xl font-bold">{formatCurrency(currentCapital)}</p>
                         </div>
                     </CardContent>
                 </Card>
                 <Card>
                     <CardHeader>
-                        <CardTitle>Métricas</CardTitle>
+                        <CardTitle>Métricas de Performance</CardTitle>
                     </CardHeader>
-                    <CardContent className="grid grid-cols-2 gap-4 text-center">
-                        {metricCards.map(metric => (
-                            <div key={metric.title}>
-                                <p className="text-xl font-bold">{metric.value}</p>
-                                <p className="text-sm text-muted-foreground">{metric.title}</p>
+                    <CardContent className="space-y-4">
+                        {/* Grid de métricas - 2 colunas */}
+                        <div className="grid grid-cols-2 gap-4">
+                            {/* Trades Encerrados */}
+                            <div className="text-center">
+                                <p className="text-2xl font-bold">{totalTrades}</p>
+                                <p className="text-xs text-muted-foreground mt-1">Trades Encerrados</p>
                             </div>
-                        ))}
+
+                            {/* Lucro Total */}
+                            <div className="text-center">
+                                <p className={`text-xl font-bold ${totalProfit >= 0 ? 'text-green-600 dark:text-green-500' : 'text-red-600 dark:text-red-500'}`}>
+                                    {formatCurrency(totalProfit)}
+                                </p>
+                                <p className="text-xs text-muted-foreground mt-1">Lucro Total</p>
+                            </div>
+
+                            {/* Lucro Médio */}
+                            <div className="text-center">
+                                <p className={`text-lg font-bold ${averageProfit >= 0 ? 'text-green-600 dark:text-green-500' : 'text-red-600 dark:text-red-500'}`}>
+                                    {formatCurrency(averageProfit)}
+                                </p>
+                                <p className="text-xs text-muted-foreground mt-1">Lucro Médio</p>
+                            </div>
+
+                            {/* Taxa de Acerto */}
+                            <div className="text-center">
+                                <p className="text-lg font-bold">{formatPercentage(winRate)}</p>
+                                <p className="text-xs text-muted-foreground mt-1">Taxa de Acerto</p>
+                            </div>
+                        </div>
+
+                        {/* Payoff Ratio em destaque */}
+                        <div className="text-center pt-3 border-t">
+                            <p className="text-lg font-bold">{payoffRatio.toFixed(2)}</p>
+                            <p className="text-xs text-muted-foreground mt-1">Payoff Ratio</p>
+                        </div>
                     </CardContent>
                 </Card>
             </div>
 
             {/* Coluna do Gráfico (9/12) */}
             <div className="lg:col-span-9">
-                <CumulativeProfitChart positions={positions} />
+                <div className="h-[575px]">
+                    <CumulativeProfitChart positions={positions} />
+                </div>
             </div>
         </div>
     );

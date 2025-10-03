@@ -23,7 +23,7 @@ const OperationsHistory: React.FC<OperationsHistoryProps> = ({
   }
 
   return (
-    <div className="space-y-3 rounded-md border p-3">
+    <div className="space-y-3 rounded-md p-3">
       <h4 className="font-semibold text-base">Histórico da Posição</h4>
       {isLoading ? (
         <Loader />

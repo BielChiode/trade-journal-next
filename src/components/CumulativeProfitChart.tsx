@@ -54,6 +54,17 @@ const CumulativeProfitChart: React.FC<CumulativeProfitChartProps> = ({
         new Date(b.last_exit_date!).getTime()
     );
 
+  // Função auxiliar para formatar data
+  const formatDate = (date: Date | string): string => {
+    const d = typeof date === 'string' ? new Date(date) : date;
+    return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+  };
+
+  const formatDateFull = (date: Date | string): string => {
+    const d = typeof date === 'string' ? new Date(date) : date;
+    return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  };
+
   let cumulativeProfit = 0;
   const chartData: ChartData<"line"> = {
     labels: ["Início"],
@@ -73,7 +84,7 @@ const CumulativeProfitChart: React.FC<CumulativeProfitChartProps> = ({
 
   sortedPositions.forEach((position, index) => {
     cumulativeProfit += Number(position.total_realized_pnl);
-    chartData.labels!.push(position.ticker);
+    chartData.labels!.push(formatDate(position.last_exit_date!));
     (chartData.datasets[0].data as number[]).push(cumulativeProfit);
   });
 
@@ -94,6 +105,17 @@ const CumulativeProfitChart: React.FC<CumulativeProfitChartProps> = ({
       },
       tooltip: {
         callbacks: {
+          title: function (context) {
+            if (context[0].dataIndex === 0) {
+              return "Início";
+            }
+            const positionIndex = context[0].dataIndex - 1;
+            if (positionIndex >= 0 && sortedPositions[positionIndex]) {
+              const position = sortedPositions[positionIndex];
+              return formatDateFull(position.last_exit_date!);
+            }
+            return "";
+          },
           label: function (context) {
             if (context.dataIndex === 0) {
               return "Capital Inicial";
@@ -105,7 +127,11 @@ const CumulativeProfitChart: React.FC<CumulativeProfitChartProps> = ({
             if (positionIndex >= 0 && sortedPositions[positionIndex]) {
               const position = sortedPositions[positionIndex];
               const result = position.total_realized_pnl;
-              return `Resultado da Posição: ${formatCurrency(result)}`;
+              const resultColor = result >= 0 ? '🟢' : '🔴';
+              return [
+                `Ativo: ${position.ticker}`,
+                `${resultColor} Resultado: ${formatCurrency(result)}`
+              ];
             }
             return "";
           },
