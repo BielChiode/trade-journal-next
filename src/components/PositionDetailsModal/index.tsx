@@ -29,7 +29,7 @@ import PositionMetrics from "./PositionMetrics";
 import { Input } from "../ui/Input";
 import PnlChip from "../ui/PnlChip";
 import { getPositionLastPrice, setPositionLastPrice } from "@/services/tradeService";
-import { getUnrealizedPnl } from "@/lib/pnl";
+import { getUnrealizedPnl, getUnrealizedPnlPct } from "@/lib/pnl";
 
 interface PositionDetailsModalProps {
   position: Position;
@@ -294,8 +294,7 @@ const PositionDetailsModal: React.FC<PositionDetailsModalProps> = ({
                 {position.status === "Open" && (
                   (() => {
                     const current = inputPrice && Number.isFinite(parseFloat(inputPrice)) ? parseFloat(inputPrice) : (position.current_price || 0);
-                    const entry = Number(position.average_entry_price) || 0;
-                    const diffPct = entry > 0 && current > 0 ? ((current - entry) / entry) * 100 : 0;
+                    const diffPct = getUnrealizedPnlPct(position, current);
                     const unrealized = getUnrealizedPnl(position, current) || 0;
                     return (
                       <div className="flex items-center gap-2 text-sm">
