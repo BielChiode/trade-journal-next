@@ -35,6 +35,7 @@ model Position {
   stop_gain           Decimal?
   stop_loss           Decimal?
   last_price          Decimal?
+  last_price_updated_at DateTime?
   operations          Operation[]
   user                User           @relation(fields: [userId], references: [id], onDelete: Cascade)
 
