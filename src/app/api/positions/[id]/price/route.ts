@@ -21,7 +21,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
     const position = await prisma.position.findFirst({
       where: { id: positionId, userId },
       // Tipos podem estar desatualizados até rodar prisma generate
-      select: ({ id: true, last_price: true } as any),
+      select: ({ id: true, last_price: true, last_price_updated_at: true } as any),
     } as any);
 
     if (!position) {
@@ -29,7 +29,11 @@ export async function GET(request: NextRequest, context: RouteContext) {
     }
 
     const p: any = position as any;
-    return NextResponse.json({ positionId: p.id, last_price: p.last_price });
+    return NextResponse.json({ 
+      positionId: p.id, 
+      last_price: p.last_price,
+      last_price_updated_at: p.last_price_updated_at
+    });
   } catch (error: any) {
     console.error("Failed to get last price:", error);
     return NextResponse.json({ message: "Failed to get last price" }, { status: 500 });
@@ -63,11 +67,18 @@ export async function PUT(request: NextRequest, context: RouteContext) {
 
     const updated = (await prisma.position.update({
       where: { id: positionId },
-      data: ({ last_price: numericPrice } as any),
-      select: ({ id: true, last_price: true } as any),
+      data: ({ 
+        last_price: numericPrice,
+        last_price_updated_at: new Date()
+      } as any),
+      select: ({ id: true, last_price: true, last_price_updated_at: true } as any),
     } as any)) as any;
 
-    return NextResponse.json({ positionId: updated.id, last_price: updated.last_price });
+    return NextResponse.json({ 
+      positionId: updated.id, 
+      last_price: updated.last_price,
+      last_price_updated_at: updated.last_price_updated_at
+    });
   } catch (error: any) {
     console.error("Failed to set last price:", error);
     return NextResponse.json({ message: "Failed to set last price" }, { status: 500 });

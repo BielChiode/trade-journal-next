@@ -97,11 +97,18 @@ export const searchTickers = async (
 
 export const getPositionLastPrice = async (
   positionId: number
-): Promise<number | undefined> => {
-  const { data } = await apiClient.get<{ positionId: number; last_price: string | number | null }>(
+): Promise<{ price: number | undefined; updatedAt: Date | undefined }> => {
+  const { data } = await apiClient.get<{ 
+    positionId: number; 
+    last_price: string | number | null;
+    last_price_updated_at: string | null;
+  }>(
     `/positions/${positionId}/price`
   );
-  return data.last_price != null ? parseFloat(String(data.last_price)) : undefined;
+  return {
+    price: data.last_price != null ? parseFloat(String(data.last_price)) : undefined,
+    updatedAt: data.last_price_updated_at ? new Date(data.last_price_updated_at) : undefined
+  };
 };
 
 export const setPositionLastPrice = async (

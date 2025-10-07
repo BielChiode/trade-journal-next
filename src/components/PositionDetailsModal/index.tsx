@@ -54,7 +54,7 @@ const PositionDetailsModal: React.FC<PositionDetailsModalProps> = ({
     null
   );
 
-  const { getPrice, setPrice, syncFromBackend, persistToBackend } = useLivePrices();
+  const { getPrice, getPriceUpdatedAt, setPrice, syncFromBackend, persistToBackend } = useLivePrices();
   const [inputPrice, setInputPrice] = useState<string>("");
   const [tempPrice, setTempPrice] = useState<string>(""); // Valor temporário durante edição
   const [originalPrice, setOriginalPrice] = useState<number>(0); // Preço original antes da edição
@@ -335,54 +335,68 @@ const PositionDetailsModal: React.FC<PositionDetailsModalProps> = ({
             {position.status === "Open" && (
               (() => {
                 const current = inputPrice && Number.isFinite(parseFloat(inputPrice)) ? parseFloat(inputPrice) : (position.current_price || 0);
+                const priceUpdatedAt = getPriceUpdatedAt(position.id);
                 return (
-                  <div className="flex items-center gap-2 text-sm bg-muted/30 p-3 rounded-lg">
-                    <span className="text-sm font-medium text-muted-foreground">Preço Atual:</span>
-                    {isEditingPrice ? (
-                      <div className="flex items-center gap-2">
-                        <Input
-                          type="number"
-                          step="0.0001"
-                          min="0"
-                          value={tempPrice}
-                          onChange={(e) => setTempPrice(e.target.value)}
-                          className="h-8 w-32"
-                          autoFocus
-                          aria-label="Editar preço atual"
-                        />
-                        <button
-                          type="button"
-                          onClick={handleSavePrice}
-                          className="inline-flex items-center justify-center w-7 h-7 rounded hover:bg-green-100 dark:hover:bg-green-900/30 text-green-600 transition-colors"
-                          title="Salvar preço"
-                          aria-label="Salvar preço"
-                        >
-                          <CheckCircle size={16} />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleCancelPriceEdit}
-                          className="inline-flex items-center justify-center w-7 h-7 rounded hover:bg-red-100 dark:hover:bg-red-900/30 text-red-600 transition-colors"
-                          title="Cancelar edição"
-                          aria-label="Cancelar edição"
-                        >
-                          <CircleMinus size={16} />
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-base">
-                          {current > 0 ? `${Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(current)}` : '-'}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={handleStartPriceEdit}
-                          className="inline-flex items-center justify-center w-7 h-7 rounded hover:bg-muted/60 transition-colors"
-                          title="Editar preço atual"
-                          aria-label="Editar preço atual"
-                        >
-                          <Edit size={14} />
-                        </button>
+                  <div className="flex items-center justify-between text-sm bg-muted/30 p-3 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-muted-foreground">Preço Atual:</span>
+                      {isEditingPrice ? (
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="number"
+                            step="0.0001"
+                            min="0"
+                            value={tempPrice}
+                            onChange={(e) => setTempPrice(e.target.value)}
+                            className="h-8 w-32"
+                            autoFocus
+                            aria-label="Editar preço atual"
+                          />
+                          <button
+                            type="button"
+                            onClick={handleSavePrice}
+                            className="inline-flex items-center justify-center w-7 h-7 rounded hover:bg-green-100 dark:hover:bg-green-900/30 text-green-600 transition-colors"
+                            title="Salvar preço"
+                            aria-label="Salvar preço"
+                          >
+                            <CheckCircle size={16} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleCancelPriceEdit}
+                            className="inline-flex items-center justify-center w-7 h-7 rounded hover:bg-red-100 dark:hover:bg-red-900/30 text-red-600 transition-colors"
+                            title="Cancelar edição"
+                            aria-label="Cancelar edição"
+                          >
+                            <CircleMinus size={16} />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-base">
+                            {current > 0 ? `${Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(current)}` : '-'}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={handleStartPriceEdit}
+                            className="inline-flex items-center justify-center w-7 h-7 rounded hover:bg-muted/60 transition-colors"
+                            title="Editar preço atual"
+                            aria-label="Editar preço atual"
+                          >
+                            <Edit size={14} />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    {priceUpdatedAt && (
+                      <div className="text-xs text-muted-foreground">
+                        Atualizado em {priceUpdatedAt.toLocaleString('pt-BR', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
                       </div>
                     )}
                   </div>
