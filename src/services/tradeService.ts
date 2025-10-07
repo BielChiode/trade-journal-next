@@ -114,12 +114,19 @@ export const getPositionLastPrice = async (
 export const setPositionLastPrice = async (
   positionId: number,
   price: number
-): Promise<number> => {
-  const { data } = await apiClient.put<{ positionId: number; last_price: string | number }>(
+): Promise<{ price: number; updatedAt: Date | undefined }> => {
+  const { data } = await apiClient.put<{
+    positionId: number;
+    last_price: string | number;
+    last_price_updated_at?: string | null;
+  }>(
     `/positions/${positionId}/price`,
     { price }
   );
-  return parseFloat(String(data.last_price));
+  return {
+    price: parseFloat(String(data.last_price)),
+    updatedAt: data.last_price_updated_at ? new Date(data.last_price_updated_at) : undefined,
+  };
 };
 
 export async function deleteOperation(

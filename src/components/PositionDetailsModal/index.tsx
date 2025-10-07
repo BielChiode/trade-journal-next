@@ -28,8 +28,7 @@ import OperationsHistory from "./OperationsHistory";
 import PositionMetrics from "./PositionMetrics";
 import { Input } from "../ui/Input";
 import PnlChip from "../ui/PnlChip";
-import { useLivePrices } from "@/hooks/useLivePrices";
-import { useDebounce } from "@/hooks/useDebounce";
+import { getPositionLastPrice, setPositionLastPrice } from "@/services/tradeService";
 import { getUnrealizedPnl } from "@/lib/pnl";
 
 interface PositionDetailsModalProps {
@@ -54,11 +53,10 @@ const PositionDetailsModal: React.FC<PositionDetailsModalProps> = ({
     null
   );
 
-  const { getPrice, getPriceUpdatedAt, setPrice, syncFromBackend, persistToBackend } = useLivePrices();
   const [inputPrice, setInputPrice] = useState<string>("");
+  const [priceUpdatedAt, setPriceUpdatedAt] = useState<Date | undefined>(undefined);
   const [tempPrice, setTempPrice] = useState<string>(""); // Valor temporário durante edição
   const [originalPrice, setOriginalPrice] = useState<number>(0); // Preço original antes da edição
-  const debouncedPrice = useDebounce(inputPrice, 400);
   const [isEditingPrice, setIsEditingPrice] = useState(false);
 
   const refreshPositionDetails = () => {
@@ -80,25 +78,30 @@ const PositionDetailsModal: React.FC<PositionDetailsModalProps> = ({
     }
   }, [position]);
 
-  // Hidratar preço atual do backend/localStorage ao abrir
   useEffect(() => {
     if (!position) return;
-    const existing = getPrice(position.id) ?? position.current_price;
-    if (existing && Number.isFinite(existing)) {
-      setInputPrice(String(existing));
-      setPrice(position.id, Number(existing));
-    }
-    // tenta sincronizar do backend
-    syncFromBackend(position.id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [position?.id]);
+    (async () => {
+      try {
+        const { price, updatedAt } = await getPositionLastPrice(position.id);
+        if (price && Number.isFinite(price)) {
+          setInputPrice(String(price));
+        } else if (position.current_price && Number.isFinite(Number(position.current_price))) {
+          setInputPrice(String(position.current_price));
+        } else {
+          setInputPrice("");
+        }
+        setPriceUpdatedAt(updatedAt);
+      } catch (e) {
+        if (position.current_price && Number.isFinite(Number(position.current_price))) {
+          setInputPrice(String(position.current_price));
+        } else {
+          setInputPrice("");
+        }
+        setPriceUpdatedAt(undefined);
+      }
+    })();
+  }, [position?.id, position?.current_price]);
 
-  useEffect(() => {
-    if (!position || !debouncedPrice || isEditingPrice) return;
-    const numeric = parseFloat(debouncedPrice);
-    if (!Number.isFinite(numeric) || numeric <= 0) return;
-    setPrice(position.id, numeric);
-  }, [debouncedPrice, position, setPrice, isEditingPrice]);
 
   const handleUpdate = async (data: PositionFormData) => {
     try {
@@ -173,9 +176,9 @@ const PositionDetailsModal: React.FC<PositionDetailsModalProps> = ({
     if (!Number.isFinite(numericPrice) || numericPrice <= 0) return;
 
     try {
-      setPrice(position.id, numericPrice);
-      await persistToBackend(position.id, numericPrice);
+      const { updatedAt } = await setPositionLastPrice(position.id, numericPrice);
       setInputPrice(tempPrice);
+      setPriceUpdatedAt(updatedAt ?? new Date());
       setIsEditingPrice(false);
       onUpdate();
     } catch (error) {
@@ -335,7 +338,6 @@ const PositionDetailsModal: React.FC<PositionDetailsModalProps> = ({
             {position.status === "Open" && (
               (() => {
                 const current = inputPrice && Number.isFinite(parseFloat(inputPrice)) ? parseFloat(inputPrice) : (position.current_price || 0);
-                const priceUpdatedAt = getPriceUpdatedAt(position.id);
                 return (
                   <div className="flex items-center justify-between text-sm bg-muted/30 p-3 rounded-lg">
                     <div className="flex items-center gap-2">
