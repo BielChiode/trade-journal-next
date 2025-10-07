@@ -17,12 +17,12 @@ function readFromLocalStorage(positionId: number): number | undefined {
   }
 }
 
-function writeToLocalStorage(positionId: number, price: number) {
+function writeToLocalStorage(positionId: number, price: number, updatedAt?: number) {
   if (typeof window === "undefined") return;
   try {
-    const payload: PositionPrice = { price, updatedAt: Date.now() };
+    const payload: PositionPrice = { price, updatedAt: updatedAt || Date.now() };
     window.localStorage.setItem(LS_KEY_PREFIX + positionId, JSON.stringify(payload));
-  } catch {}
+  } catch { }
 }
 
 export function useLivePrices() {
@@ -38,7 +38,7 @@ export function useLivePrices() {
   const getPriceUpdatedAt = useCallback((positionId: number): Date | undefined => {
     const mem = prices[positionId]?.updatedAt;
     if (typeof mem === "number") return new Date(mem);
-    
+
     // Tentar buscar do localStorage
     if (typeof window === "undefined") return undefined;
     try {
@@ -63,30 +63,31 @@ export function useLivePrices() {
     try {
       const { price, updatedAt } = await getPositionLastPrice(positionId);
       if (price && Number.isFinite(price) && price > 0) {
-        const backendUpdatedAt = updatedAt ? updatedAt.getTime() : Date.now();
+        const currentPrice = prices[positionId];
+        const backendUpdatedAt = updatedAt ? updatedAt.getTime() : (currentPrice?.updatedAt || Date.now());
+
         setPrices(prev => ({ ...prev, [positionId]: { price, updatedAt: backendUpdatedAt } }));
-        writeToLocalStorage(positionId, price);
+        writeToLocalStorage(positionId, price, backendUpdatedAt);
       }
     } finally {
       syncingRef.current[positionId] = false;
     }
-  }, []);
+  }, [prices]);
 
   const persistToBackend = useCallback(async (positionId: number, price: number) => {
     try {
       await setPositionLastPrice(positionId, price);
     } catch (e) {
-      // falha silenciosa; valor segue no estado/localStorage
       console.error("Falha ao persistir last_price:", e);
     }
   }, []);
 
-  return useMemo(() => ({ 
-    getPrice, 
+  return useMemo(() => ({
+    getPrice,
     getPriceUpdatedAt,
-    setPrice, 
-    syncFromBackend, 
-    persistToBackend 
+    setPrice,
+    syncFromBackend,
+    persistToBackend
   }), [getPrice, getPriceUpdatedAt, setPrice, syncFromBackend, persistToBackend]);
 }
 
