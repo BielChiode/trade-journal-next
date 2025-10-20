@@ -2,10 +2,11 @@
 
 import React, { useState } from "react";
 import Image from "next/image";
-import { LogOut } from "lucide-react";
+import { LogOut, Calculator } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import ConfirmationModal from "@/components/ui/ConfirmationModal";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import RiskCalculatorModal from "@/components/RiskCalculatorModal";
 
 interface DashboardHeaderProps {
   logout: () => void;
@@ -13,6 +14,7 @@ interface DashboardHeaderProps {
 
 const DashboardHeader: React.FC<DashboardHeaderProps> = ({ logout }) => {
   const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
+  const [isRiskCalculatorOpen, setIsRiskCalculatorOpen] = useState(false);
 
   return (
     <>
@@ -33,6 +35,9 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ logout }) => {
 
         <div className="flex items-center gap-2">
           <ThemeToggle />
+          <Button variant="ghost" size="icon" onClick={() => setIsRiskCalculatorOpen(true)} title="Calculadora de Risco">
+            <Calculator size={16} />
+          </Button>
           <Button variant="ghost" size="icon" onClick={() => setIsLogoutConfirmOpen(true)} title="Sair">
             <LogOut size={16} />
           </Button>
@@ -45,6 +50,10 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ logout }) => {
         title="Confirmar Logout"
         message="Você tem certeza que deseja sair?"
         loading={false}
+      />
+      <RiskCalculatorModal
+        isOpen={isRiskCalculatorOpen}
+        onClose={() => setIsRiskCalculatorOpen(false)}
       />
     </>
   );
