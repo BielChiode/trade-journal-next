@@ -6,9 +6,10 @@ interface ModalProps {
     onClose: () => void;
     title: string;
     children: React.ReactNode;
+    headerClassName?: string;
 }
 
-const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
+const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, headerClassName }) => {
     if (!isOpen) return null;
 
     const handleOverlayClick = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -20,7 +21,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-2 sm:p-4" onClick={handleOverlayClick}>
             <div className="bg-background text-foreground rounded-lg shadow-xl w-full max-w-sm sm:max-w-md md:max-w-lg lg:max-w-2xl max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
-                <div className="flex items-center justify-between p-3 sm:p-4 border-b">
+                <div className={`flex items-center justify-between p-3 sm:p-4 border-b ${headerClassName ?? ''}`}>
                     <h2 className="text-base sm:text-lg font-semibold truncate pr-2">{title}</h2>
                     <button
                         onClick={onClose}
