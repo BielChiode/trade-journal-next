@@ -8,12 +8,13 @@
 /package-lock.json
 /backend/package-lock.json
 /frontend/package-lock.json
-
+.yarn/
 
 # Build artifacts
 .next/
 .swc/
 out/
+
 
 # Database
 trades.db
