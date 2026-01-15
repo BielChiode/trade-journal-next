@@ -269,7 +269,12 @@ const PositionDetailsModal: React.FC<PositionDetailsModalProps> = ({
 
   return (
     <>
-      <Modal isOpen={true} onClose={onClose} title="Detalhes da Posição">
+      <Modal
+        isOpen={true}
+        onClose={onClose}
+        title="Detalhes da Posição"
+        containerClassName="bg-background text-foreground rounded-lg shadow-xl w-[80vw] max-h-[90vh] overflow-y-auto"
+      >
         <div className="space-y-5">
           {/* 1. CABEÇALHO E RESUMO PRINCIPAL */}
           <div className="space-y-3">
@@ -407,87 +412,110 @@ const PositionDetailsModal: React.FC<PositionDetailsModalProps> = ({
           </div>
 
           {/* 2. DETALHES DA ENTRADA */}
-          <div className="pt-4 border-t">
-            <h4 className="text-sm font-semibold text-muted-foreground mb-3 uppercase tracking-wide">Detalhes da Entrada</h4>
-            <PositionMetrics
-              position={position}
-              closedPositionMetrics={closedPositionMetrics}
-              currentPrice={(inputPrice && Number.isFinite(parseFloat(inputPrice)) ? parseFloat(inputPrice) : undefined)}
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 pt-4 border-t">
+            <div>
+              <h4 className="text-sm font-semibold text-muted-foreground mb-3 uppercase tracking-wide">Detalhes da Entrada</h4>
+              <PositionMetrics
+                position={position}
+                closedPositionMetrics={closedPositionMetrics}
+                currentPrice={(inputPrice && Number.isFinite(parseFloat(inputPrice)) ? parseFloat(inputPrice) : undefined)}
+              />
+            </div>
+            <div>
+              {/* Coluna vazia reservada para uso futuro */}
+            </div>
           </div>
 
-          {/* 3. PARÂMETROS DE SAÍDA (STOPS) */}
-          {(position.stop_gain || position.stop_loss) && (
-            <div className="pt-4 border-t">
-              <h4 className="text-sm font-semibold text-muted-foreground mb-3 uppercase tracking-wide">Parâmetros de Saída</h4>
-              <div className="bg-muted/30 p-4 rounded-lg border border-border/50 space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {position.stop_gain && (
-                    <div className="space-y-1">
-                      <label className="text-xs font-medium text-muted-foreground">
-                        Stop Gain
-                      </label>
-                      <p className="text-lg font-bold text-green-600 dark:text-green-500">
-                        {formatCurrency(position.stop_gain)}
-                      </p>
-                      {position.status === "Open" && (
-                        <p className="text-xs text-muted-foreground">
-                          Lucro Potencial: <span className="font-semibold text-green-600 dark:text-green-500">
-                            {formatCurrency(
-                              Math.abs(position.stop_gain - position.average_entry_price) * Number(position.current_quantity)
-                            )}
-                          </span>
+          {/* 3. PARÂMETROS DE SAÍDA E HISTÓRICO DA POSIÇÃO */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 pt-4 border-t">
+            {/* PARÂMETROS DE SAÍDA (STOPS) */}
+            {(position.stop_gain || position.stop_loss) && (
+              <div className="md:border-r md:pr-6">
+                <h4 className="text-sm font-semibold text-muted-foreground mb-3 uppercase tracking-wide">Parâmetros de Saída</h4>
+                <div className="bg-muted/30 p-4 rounded-lg border border-border/50 space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {position.stop_gain && (
+                      <div className="space-y-1">
+                        <label className="text-xs font-medium text-muted-foreground">
+                          Stop Gain
+                        </label>
+                        <p className="text-lg font-bold text-green-600 dark:text-green-500">
+                          {formatCurrency(position.stop_gain)}
                         </p>
-                      )}
-                    </div>
-                  )}
-                  {position.stop_loss && (
-                    <div className="space-y-1">
-                      <label className="text-xs font-medium text-muted-foreground">
-                        Stop Loss
-                      </label>
-                      <p className="text-lg font-bold text-red-600 dark:text-red-500">
-                        {formatCurrency(position.stop_loss)}
-                      </p>
-                      {position.status === "Open" && (
-                        <p className="text-xs text-muted-foreground">
-                          Perda Potencial: <span className="font-semibold text-red-600 dark:text-red-500">
-                            {formatCurrency(
-                              Math.abs(position.average_entry_price - position.stop_loss) * Number(position.current_quantity)
-                            )}
-                          </span>
+                        {position.status === "Open" && (
+                          <p className="text-xs text-muted-foreground">
+                            Lucro Potencial: <span className="font-semibold text-green-600 dark:text-green-500">
+                              {formatCurrency(
+                                Math.abs(position.stop_gain - position.average_entry_price) * Number(position.current_quantity)
+                              )}
+                            </span>
+                          </p>
+                        )}
+                      </div>
+                    )}
+                    {position.stop_loss && (
+                      <div className="space-y-1">
+                        <label className="text-xs font-medium text-muted-foreground">
+                          Stop Loss
+                        </label>
+                        <p className="text-lg font-bold text-red-600 dark:text-red-500">
+                          {formatCurrency(position.stop_loss)}
                         </p>
-                      )}
+                        {position.status === "Open" && (
+                          <p className="text-xs text-muted-foreground">
+                            Perda Potencial: <span className="font-semibold text-red-600 dark:text-red-500">
+                              {formatCurrency(
+                                Math.abs(position.average_entry_price - position.stop_loss) * Number(position.current_quantity)
+                              )}
+                            </span>
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  {position.stop_gain && position.stop_loss && (
+                    <div className="pt-3 border-t border-border/30">
+                      <label className="text-xs font-medium text-muted-foreground">
+                        Risco:Retorno (R:R)
+                      </label>
+                      <p className="mt-1 text-base font-bold">
+                        {(() => {
+                          const entryPrice = position.average_entry_price;
+                          const stopGain = position.stop_gain;
+                          const stopLoss = position.stop_loss;
+
+                          if (!entryPrice || !stopGain || !stopLoss) return "-";
+
+                          const potentialGain = Math.abs(stopGain - entryPrice);
+                          const potentialLoss = Math.abs(entryPrice - stopLoss);
+
+                          if (potentialLoss === 0) return "-";
+
+                          const payoffRatio = potentialGain / potentialLoss;
+                          return `${payoffRatio.toFixed(2)} : 1`;
+                        })()}
+                      </p>
                     </div>
                   )}
                 </div>
-                {position.stop_gain && position.stop_loss && (
-                  <div className="pt-3 border-t border-border/30">
-                    <label className="text-xs font-medium text-muted-foreground">
-                      Risco:Retorno (R:R)
-                    </label>
-                    <p className="mt-1 text-base font-bold">
-                      {(() => {
-                        const entryPrice = position.average_entry_price;
-                        const stopGain = position.stop_gain;
-                        const stopLoss = position.stop_loss;
-
-                        if (!entryPrice || !stopGain || !stopLoss) return "-";
-
-                        const potentialGain = Math.abs(stopGain - entryPrice);
-                        const potentialLoss = Math.abs(entryPrice - stopLoss);
-
-                        if (potentialLoss === 0) return "-";
-
-                        const payoffRatio = potentialGain / potentialLoss;
-                        return `${payoffRatio.toFixed(2)} : 1`;
-                      })()}
-                    </p>
-                  </div>
-                )}
               </div>
-            </div>
-          )}
+            )}
+
+            {/* HISTÓRICO DA POSIÇÃO */}
+            {operations.length > 1 && (
+              <div className={!(position.stop_gain || position.stop_loss) ? "md:col-span-2" : ""}>
+                <h4 className="text-sm font-semibold text-muted-foreground mb-3 uppercase tracking-wide">Histórico da Posição</h4>
+                <div className="bg-muted/20 p-3 rounded-lg border border-border/30 max-h-[250px] overflow-y-auto">
+                  <OperationsHistory
+                    operations={operations}
+                    isLoading={isLoading}
+                    position={position}
+                    onDeleteOperation={openDeleteOperationConfirm}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* Setup e Observações */}
           {(position.setup || position.observations) && (
@@ -513,20 +541,6 @@ const PositionDetailsModal: React.FC<PositionDetailsModalProps> = ({
             </div>
           )}
 
-          {/* 4. HISTÓRICO DA POSIÇÃO */}
-          {operations.length > 1 && (
-            <div className="pt-4 border-t">
-              <h4 className="text-sm font-semibold text-muted-foreground mb-3 uppercase tracking-wide">Histórico da Posição</h4>
-              <div className="bg-muted/20 p-3 rounded-lg border border-border/30">
-                <OperationsHistory
-                  operations={operations}
-                  isLoading={isLoading}
-                  position={position}
-                  onDeleteOperation={openDeleteOperationConfirm}
-                />
-              </div>
-            </div>
-          )}
         </div>
 
         {/* 5. AÇÕES (CTAs) */}
