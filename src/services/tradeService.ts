@@ -1,5 +1,5 @@
 import apiClient from "./apiClient";
-import { Position, Operation } from "../types/trade";
+import { Position, Operation, CandleData } from "../types/trade";
 
 const transformPositionData = (position: any): Position => ({
   ...position,
@@ -127,6 +127,22 @@ export const setPositionLastPrice = async (
     price: parseFloat(String(data.last_price)),
     updatedAt: data.last_price_updated_at ? new Date(data.last_price_updated_at) : undefined,
   };
+};
+
+export const getPriceHistory = async (
+  symbol: string,
+  range: string = "3mo",
+  interval: string = "1d"
+): Promise<CandleData> => {
+  try {
+    const { data } = await apiClient.get<CandleData>(
+      `/tickers/candles?symbol=${encodeURIComponent(symbol)}&range=${range}&interval=${interval}`
+    );
+    return data;
+  } catch (error) {
+    console.error("Erro ao buscar histórico de preços:", error);
+    return { status: "no_data", candles: [] };
+  }
 };
 
 export async function deleteOperation(

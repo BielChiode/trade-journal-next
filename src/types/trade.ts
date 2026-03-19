@@ -46,4 +46,18 @@ export interface Operation {
   date: Date;
   result?: number;
   observations?: string;
-} 
+}
+
+export interface PriceCandle {
+  timestamp: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+}
+
+export interface CandleData {
+  status: "ok" | "no_data";
+  candles: PriceCandle[];
+}

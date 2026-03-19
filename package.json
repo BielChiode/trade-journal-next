@@ -24,6 +24,7 @@
     "axios": "^1.10.0",
     "bcryptjs": "^3.0.2",
     "chart.js": "^4.5.0",
+    "chartjs-plugin-annotation": "^3.1.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "jsonwebtoken": "^9.0.2",
@@ -58,5 +59,6 @@
     "tailwindcss": "^4.1.10",
     "tsx": "^4.20.3",
     "typescript": "^5"
-  }
+  },
+  "packageManager": "yarn@1.22.0+sha512.28c1cffc9ab9de364a4d8f624d4b77748565fdb7ba50fb3620da3debe0676472cac583537f03269601d368c5b2199a0eef8448e00205be75a162b5ead9448992"
 }

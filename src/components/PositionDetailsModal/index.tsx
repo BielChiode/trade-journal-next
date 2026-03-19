@@ -28,6 +28,7 @@ import OperationsHistory from "./OperationsHistory";
 import PositionMetrics from "./PositionMetrics";
 import { Input } from "../ui/Input";
 import PnlChip from "../ui/PnlChip";
+import PriceHistoryChart from "./PriceHistoryChart";
 import { getPositionLastPrice, setPositionLastPrice } from "@/services/tradeService";
 import { getUnrealizedPnl, getUnrealizedPnlPct } from "@/lib/pnl";
 
@@ -422,7 +423,17 @@ const PositionDetailsModal: React.FC<PositionDetailsModalProps> = ({
               />
             </div>
             <div>
-              {/* Coluna vazia reservada para uso futuro */}
+              <h4 className="text-sm font-semibold text-muted-foreground mb-3 uppercase tracking-wide">Histórico de Preço</h4>
+              <PriceHistoryChart
+                ticker={position.ticker}
+                entryDate={position.initial_entry_date}
+                exitDate={position.last_exit_date}
+                status={position.status}
+                averageEntryPrice={position.average_entry_price}
+                stopGain={position.stop_gain}
+                stopLoss={position.stop_loss}
+                positionType={position.type}
+              />
             </div>
           </div>
 
