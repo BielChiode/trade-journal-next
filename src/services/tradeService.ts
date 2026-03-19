@@ -84,15 +84,10 @@ export const searchTickers = async (
   if (!symbol) {
     return [];
   }
-  try {
-    const response = await apiClient.get(
-      `/tickers?symbol=${encodeURIComponent(symbol)}`
-    );
-    return response.data;
-  } catch (error) {
-    console.error("Erro ao buscar tickers:", error);
-    return [];
-  }
+  const response = await apiClient.get(
+    `/tickers?symbol=${encodeURIComponent(symbol)}`
+  );
+  return response.data;
 };
 
 export const getPositionLastPrice = async (
@@ -134,15 +129,10 @@ export const getPriceHistory = async (
   range: string = "3mo",
   interval: string = "1d"
 ): Promise<CandleData> => {
-  try {
-    const { data } = await apiClient.get<CandleData>(
-      `/tickers/candles?symbol=${encodeURIComponent(symbol)}&range=${range}&interval=${interval}`
-    );
-    return data;
-  } catch (error) {
-    console.error("Erro ao buscar histórico de preços:", error);
-    return { status: "no_data", candles: [] };
-  }
+  const { data } = await apiClient.get<CandleData>(
+    `/tickers/candles?symbol=${encodeURIComponent(symbol)}&range=${range}&interval=${interval}`
+  );
+  return data;
 };
 
 export async function deleteOperation(

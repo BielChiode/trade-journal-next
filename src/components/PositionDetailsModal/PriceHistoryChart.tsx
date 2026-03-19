@@ -17,10 +17,10 @@ import {
   Filler,
 } from "chart.js";
 import annotationPlugin from "chartjs-plugin-annotation";
-import { getPriceHistory } from "@/services/tradeService";
 import { PriceCandle } from "@/types/trade";
 import { formatCurrency } from "@/lib/utils";
 import Loader from "../ui/Loader";
+import { usePriceHistory } from "@/hooks/queries/usePriceHistory";
 
 ChartJS.register(
   CategoryScale,
@@ -68,28 +68,17 @@ const PriceHistoryChart: React.FC<PriceHistoryChartProps> = ({
   stopLoss,
 }) => {
   const { theme } = useTheme();
-  const [candles, setCandles] = useState<PriceCandle[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [fontSize, setFontSize] = useState(12);
+
+  const { range, interval } = getRangeAndInterval(entryDate, exitDate, status);
+  const { data: priceData, isPending, isError } = usePriceHistory(ticker, range, interval);
+  const candles: PriceCandle[] = priceData?.candles ?? [];
 
   useEffect(() => {
     setFontSize(window.innerWidth < 640 ? 10 : 12);
   }, []);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true);
-
-      const { range, interval } = getRangeAndInterval(entryDate, exitDate, status);
-      const data = await getPriceHistory(ticker, range, interval);
-      setCandles(data.candles);
-      setIsLoading(false);
-    };
-
-    fetchData();
-  }, [ticker, entryDate, exitDate, status]);
-
-  if (isLoading) {
+  if (isPending) {
     return (
       <div className="h-[300px] flex items-center justify-center bg-muted/20 rounded-lg border border-border/30">
         <Loader />
@@ -97,7 +86,7 @@ const PriceHistoryChart: React.FC<PriceHistoryChartProps> = ({
     );
   }
 
-  if (candles.length === 0) {
+  if (isError || candles.length === 0) {
     return (
       <div className="h-[300px] flex items-center justify-center bg-muted/20 rounded-lg border border-border/30">
         <p className="text-sm text-muted-foreground">

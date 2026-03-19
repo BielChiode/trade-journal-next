@@ -1,12 +1,12 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Button } from "../ui/Button";
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
 import ButtonLoader from "@/components/ui/ButtonLoader";
 import { Input } from "../ui/Input";
 import { Position } from "@/types/trade";
-import { searchTickers } from "@/services/tradeService";
 import { useDebounce } from "@/hooks/useDebounce";
+import { useTickerSearch } from "@/hooks/queries/useTickerSearch";
 import BracketOrderSection from "./BracketOrderSection";
 import ExitSection from "./ExitSection";
 
@@ -69,11 +69,6 @@ const PositionForm: React.FC<PositionFormProps> = ({
     !!((initialData as PositionFormData)?.exit_price || (initialData as PositionFormData)?.exit_date)
   );
 
-  const [tickerSuggestions, setTickerSuggestions] = useState<
-    { symbol: string; instrument_name: string; exchange: string }[]
-  >([]);
-  const [isSearching, setIsSearching] = useState(false);
-
   const [loading, setLoading] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
   const [showExitCalendar, setShowExitCalendar] = useState(false);
@@ -85,29 +80,13 @@ const PositionForm: React.FC<PositionFormProps> = ({
 
   const debouncedTicker = useDebounce(formData.ticker, 300);
 
-  useEffect(() => {
-    const fetchTickers = async () => {
-      if (skipNextDebounce.current) {
-        skipNextDebounce.current = false;
-        return;
-      }
-      if (
-        !hasUserStartedTyping.current ||
-        isEditRestricted ||
-        debouncedTicker.length < 2
-      ) {
-        setTickerSuggestions([]);
-        return;
-      }
-      setIsSearching(true);
-      const results = await searchTickers(debouncedTicker);
-      setTickerSuggestions(results);
-      setIsSearching(false);
-    };
-    fetchTickers();
-  }, [debouncedTicker, isEditRestricted]);
+  const tickerSearchQuery = useTickerSearch(
+    skipNextDebounce.current ? "" : debouncedTicker,
+    hasUserStartedTyping.current && !isEditRestricted
+  );
 
-  console.log(tickerSuggestions);
+  const tickerSuggestions = tickerSearchQuery.data ?? [];
+  const isSearching = tickerSearchQuery.isFetching;
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -127,7 +106,7 @@ const PositionForm: React.FC<PositionFormProps> = ({
         tickerInputRef.current &&
         !tickerInputRef.current.contains(event.target as Node)
       ) {
-        setTickerSuggestions([]);
+        // Clear suggestions when clicking outside
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -144,6 +123,9 @@ const PositionForm: React.FC<PositionFormProps> = ({
     if (e.target.name === "ticker" && !hasUserStartedTyping.current) {
       hasUserStartedTyping.current = true;
     }
+    if (e.target.name === "ticker") {
+      skipNextDebounce.current = false;
+    }
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
@@ -159,7 +141,6 @@ const PositionForm: React.FC<PositionFormProps> = ({
     setIsBracketOrder(checked);
 
     if (!checked) {
-      // Limpar os campos quando desmarcar o checkbox
       setFormData((prev) => ({
         ...prev,
         stop_gain: undefined,
@@ -173,7 +154,6 @@ const PositionForm: React.FC<PositionFormProps> = ({
     setIsClosedPosition(checked);
 
     if (!checked) {
-      // Limpar os campos quando desmarcar o checkbox
       setFormData((prev) => ({
         ...prev,
         exit_price: undefined,
@@ -193,14 +173,13 @@ const PositionForm: React.FC<PositionFormProps> = ({
       ...prev,
       ticker: ticker.symbol,
     }));
-    setTickerSuggestions([]);
   };
 
   const handleDateChange = (value: Value, isExitDate: boolean = false) => {
     const newDate = Array.isArray(value) ? value[0] : value;
     if (newDate) {
       const dateString = newDate.toISOString().split("T")[0];
-      
+
       if (isExitDate) {
         setFormData((prev) => ({
           ...prev,
@@ -224,7 +203,6 @@ const PositionForm: React.FC<PositionFormProps> = ({
       return;
     }
 
-    // Validação para Ordem Bracket
     if (isBracketOrder) {
       if (!formData.stop_gain || !formData.stop_loss) {
         alert("Para usar Ordem Bracket, é necessário preencher Stop Gain e Stop Loss.");
@@ -236,7 +214,6 @@ const PositionForm: React.FC<PositionFormProps> = ({
       }
     }
 
-    // Validação para Posição Fechada
     if (isClosedPosition) {
       if (!formData.exit_price || !formData.exit_date) {
         alert("Para registrar saída, é necessário preencher Preço de Saída e Data de Saída.");
@@ -250,14 +227,12 @@ const PositionForm: React.FC<PositionFormProps> = ({
 
     setLoading(true);
     try {
-      // Remover stop_gain e stop_loss se não for Ordem Bracket
       let dataToSubmit = isBracketOrder ? formData : {
         ...formData,
         stop_gain: undefined,
         stop_loss: undefined,
       };
 
-      // Remover campos de saída se não for posição fechada
       if (!isClosedPosition) {
         dataToSubmit = {
           ...dataToSubmit,
