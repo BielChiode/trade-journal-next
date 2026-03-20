@@ -1,13 +1,8 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { PlusCircle } from "lucide-react";
-import {
-  getPositions,
-  addPosition,
-  deletePosition,
-} from "@/services/tradeService";
 import { Button } from "@/components/ui/Button";
 import Modal from "@/components/ui/Modal";
 import { Position } from "@/types/trade";
@@ -19,13 +14,15 @@ import ConfirmationModal from "@/components/ui/ConfirmationModal";
 import Loader from "@/components/ui/Loader";
 import PositionForm, { PositionFormData } from "@/components/PositionForm";
 import PositionDetailsModal from "@/components/PositionDetailsModal";
+import { usePositions } from "@/hooks/queries/usePositions";
+import { useCreatePosition } from "@/hooks/mutations/useCreatePosition";
+import { useDeletePosition } from "@/hooks/mutations/useDeletePosition";
 
 const DashboardPage: React.FC = () => {
   const { logout, isAuthenticated, loading } = useAuth();
   const router = useRouter();
-  const [positions, setPositions] = useState<Position[]>([]);
   const [isTradeModalOpen, setIsTradeModalOpen] = useState(false);
-  const [selectedPosition, setSelectedPosition] = useState<Position | null>(
+  const [selectedPositionId, setSelectedPositionId] = useState<number | null>(
     null
   );
   const [initialCapital, setInitialCapital] = useState<number>(() => {
@@ -38,8 +35,6 @@ const DashboardPage: React.FC = () => {
   const [isEditingCapital, setIsEditingCapital] = useState(false);
   const [tempCapital, setTempCapital] = useState<number>(initialCapital);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [isPositionsLoading, setIsPositionsLoading] = useState(true);
 
   const [statusFilter, setStatusFilter] = useState<"all" | "Open" | "Closed">(
     "all"
@@ -47,6 +42,19 @@ const DashboardPage: React.FC = () => {
   const [tickerSearch, setTickerSearch] = useState("");
   const [resultFilter, setResultFilter] = useState<"all" | "profit" | "loss">(
     "all"
+  );
+
+  const {
+    data: positions = [],
+    isPending: isPositionsLoading,
+  } = usePositions();
+
+  const createPositionMutation = useCreatePosition();
+  const deletePositionMutation = useDeletePosition();
+
+  const selectedPosition = useMemo(
+    () => positions.find((p) => p.id === selectedPositionId) ?? null,
+    [positions, selectedPositionId]
   );
 
   useEffect(() => {
@@ -60,38 +68,6 @@ const DashboardPage: React.FC = () => {
       router.push("/login");
     }
   }, [isAuthenticated, loading, router]);
-
-  const loadPositions = useCallback(async () => {
-    if (!isAuthenticated) return;
-    try {
-      const response = await getPositions();
-      setPositions(response);
-
-      setSelectedPosition((currentSelected) => {
-        if (!currentSelected) return null;
-        const updatedPosition = response.find(
-          (p) => p.id === currentSelected.id
-        );
-        return updatedPosition || null;
-      });
-    } catch (error) {
-      console.error("Erro ao carregar posições:", error);
-    } finally {
-      setIsPositionsLoading(false);
-    }
-  }, [isAuthenticated]);
-
-  useEffect(() => {
-    loadPositions();
-    const savedCapital = localStorage.getItem("initialCapital");
-    if (savedCapital) {
-      const capitalValue = parseFloat(savedCapital);
-      if (!isNaN(capitalValue)) {
-        setInitialCapital(capitalValue);
-        setTempCapital(capitalValue);
-      }
-    }
-  }, [loadPositions]);
 
   useEffect(() => {
     localStorage.setItem("filter_status", statusFilter);
@@ -140,33 +116,15 @@ const DashboardPage: React.FC = () => {
   }
 
   const handleAddPosition = async (positionData: PositionFormData) => {
-    try {
-      setIsPositionsLoading(true);
-      await addPosition(positionData);
-      setIsTradeModalOpen(false);
-      await loadPositions();
-    } catch (error) {
-      setIsPositionsLoading(false);
-      console.error("Erro ao adicionar posição:", error);
-      throw error;
-    }
+    await createPositionMutation.mutateAsync(positionData);
+    setIsTradeModalOpen(false);
   };
 
   const handleDeletePosition = async () => {
-    if (!selectedPosition) return;
-    setIsDeleting(true);
-    try {
-      setIsPositionsLoading(true);
-      await deletePosition(selectedPosition.id);
-      await loadPositions();
-      setIsConfirmModalOpen(false);
-      setSelectedPosition(null);
-    } catch (error) {
-      console.error("Erro ao deletar posição", error);
-    } finally {
-      setIsDeleting(false);
-      setIsPositionsLoading(false);
-    }
+    if (!selectedPositionId) return;
+    await deletePositionMutation.mutateAsync(selectedPositionId);
+    setIsConfirmModalOpen(false);
+    setSelectedPositionId(null);
   };
 
   const handleClearFilters = () => {
@@ -180,16 +138,16 @@ const DashboardPage: React.FC = () => {
   };
 
   const handleOpenDetailsModal = (position: Position) => {
-    setSelectedPosition(position);
+    setSelectedPositionId(position.id);
   };
 
   const handleOpenConfirmDeleteModal = (position: Position) => {
-    setSelectedPosition(position);
+    setSelectedPositionId(position.id);
     setIsConfirmModalOpen(true);
   };
 
   const handleCloseDetailsModal = () => {
-    setSelectedPosition(null);
+    setSelectedPositionId(null);
   };
 
   return (
@@ -252,11 +210,10 @@ const DashboardPage: React.FC = () => {
         </Modal>
       )}
 
-      {selectedPosition && (
+      {selectedPosition && !isConfirmModalOpen && (
         <PositionDetailsModal
           position={selectedPosition}
           onClose={handleCloseDetailsModal}
-          onUpdate={loadPositions}
         />
       )}
 
@@ -267,7 +224,7 @@ const DashboardPage: React.FC = () => {
           onConfirm={handleDeletePosition}
           title="Confirmar Exclusão"
           message={`Tem certeza que deseja excluir a posição do ticker ${selectedPosition?.ticker}? Toda a posição, incluindo parciais e incrementos, será removida.`}
-          loading={isDeleting}
+          loading={deletePositionMutation.isPending}
         />
       )}
     </>

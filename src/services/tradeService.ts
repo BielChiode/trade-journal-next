@@ -1,5 +1,5 @@
 import apiClient from "./apiClient";
-import { Position, Operation } from "../types/trade";
+import { Position, Operation, CandleData } from "../types/trade";
 
 const transformPositionData = (position: any): Position => ({
   ...position,
@@ -84,15 +84,10 @@ export const searchTickers = async (
   if (!symbol) {
     return [];
   }
-  try {
-    const response = await apiClient.get(
-      `/tickers?symbol=${encodeURIComponent(symbol)}`
-    );
-    return response.data;
-  } catch (error) {
-    console.error("Erro ao buscar tickers:", error);
-    return [];
-  }
+  const response = await apiClient.get(
+    `/tickers?symbol=${encodeURIComponent(symbol)}`
+  );
+  return response.data;
 };
 
 export const getPositionLastPrice = async (
@@ -127,6 +122,17 @@ export const setPositionLastPrice = async (
     price: parseFloat(String(data.last_price)),
     updatedAt: data.last_price_updated_at ? new Date(data.last_price_updated_at) : undefined,
   };
+};
+
+export const getPriceHistory = async (
+  symbol: string,
+  range: string = "3mo",
+  interval: string = "1d"
+): Promise<CandleData> => {
+  const { data } = await apiClient.get<CandleData>(
+    `/tickers/candles?symbol=${encodeURIComponent(symbol)}&range=${range}&interval=${interval}`
+  );
+  return data;
 };
 
 export async function deleteOperation(
